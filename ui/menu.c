@@ -28,27 +28,27 @@
 #include "ui/menu.h"
 #include "ui/ui.h"
 
-static const char MenuList[][7] = {
+static const char MenuList[][9] = {
 	// 0x00
-	"SQL",    "STEP",    "TXP",    "R_DCS",
-	"R_CTCS", "T_DCS",   "T_CTCS", "SFT-D",
+	"Squelch",    "Step",    "TXPwr",    "RxDCS",
+	"RxCTC", "TxDCS",   "TxCTC", "SftDir",
 	// 0x08
-	"OFFSET", "W/N",     "SCR",    "BCL",
-	"MEM-CH", "SAVE",    "VOX",    "ABR",
+	"Offset", "Wide/Nar",     "Scramble",    "BusyLck",
+	"SaveCh", "PwrSave",    "Vox",    "BLTimeout",
 	// 0x10
-	"TDR",    "WX",      "BEEP",   "TOT",
-	"VOICE",  "SC-REV",  "MDF",    "AUTOLK",
+	"DualWatch",    "CrossBand",      "Beep",   "TXTimeout",
+	"Voice",  "ScanMode",  "ChanDsply",    "AutoLock",
 	// 0x18
-	"S-ADD1", "S-ADD2",  "STE",    "RP-STE",
-	"MIC",    "1-CALL",  "S-LIST", "SLIST1",
+	"AddList1", "AddList2",  "STE",    "RPT-STE",
+	"MicGain",    "1-Call",  "ScanList", "SList1",
 	// 0x20
-	"SLIST2", "AL-MOD",  "ANI-ID", "UPCODE",
-	"DWCODE", "D-ST",    "D-RSP",  "D-HOLD",
+	"SList2", "AlarmMode",  "ANI-ID", "UpCode",
+	"DownCode", "DT-Local",    "DT-Resp",  "D-Hold",
 	// 0x28
-	"D-PRE",  "PTT-ID",  "D-DCD",  "D-LIST",
-	"PONMSG", "ROGER",   "VOL",    "AM",
+	"D-Pre",  "PTT-ID",  "D-Decode",  "D-List",
+	"PONMsg", "Roger",   "Voltage",    "AM",
 	// 0x30
-	"NOAA_S", "DEL-CH",  "RESET",  "350TX",
+	"NOAA Scan", "DelCh",  "Reset",  "350TX",
 	"F-LOCK", "200TX",   "500TX",  "350EN",
 	// 0x38
 	"SCREN",
@@ -65,29 +65,29 @@ static const uint16_t gSubMenu_Step[] = {
 };
 
 static const char gSubMenu_TXP[3][5] = {
-	"LOW",
-	"MID",
-	"HIGH",
+	"Low",
+	"Mid",
+	"High",
 };
 
 static const char gSubMenu_SFT_D[3][4] = {
-	"OFF",
+	"Off",
 	"+",
 	"-",
 };
 
 static const char gSubMenu_W_N[2][7] = {
-	"WIDE",
-	"NARROW",
+	"Wide",
+	"Narrow",
 };
 
 static const char gSubMenu_OFF_ON[2][4] = {
-	"OFF",
-	"ON",
+	"Off",
+	"On",
 };
 
 static const char gSubMenu_SAVE[5][4] = {
-	"OFF",
+	"Off",
 	"1:1",
 	"1:2",
 	"1:3",
@@ -95,9 +95,9 @@ static const char gSubMenu_SAVE[5][4] = {
 };
 
 static const char gSubMenu_CHAN[3][7] = {
-	"OFF",
-	"CHAN_A",
-	"CHAN_B",
+	"Off",
+	"Chan_A",
+	"Chan_B",
 };
 
 static const char gSubMenu_VOICE[3][4] = {
@@ -176,26 +176,40 @@ void UI_DisplayMenu(void)
 	uint8_t i;
 
 	memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
-
-	for (i = 0; i < 3; i++) {
-		if (gMenuCursor || i) {
-			if ((gMenuListCount - 1) != gMenuCursor || (i != 2)) {
-				UI_PrintString(MenuList[gMenuCursor + i - 1], 0, 127, i * 2, 8, false);
-			}
-		}
+	// Draw (at most) 3 menu items on the screen: the selected one, and one above and below it
+	// for (i = 0; i < 3; i++) {
+	// 	if (gMenuCursor || i) { // If we're not on the first menu item, draw the one above
+	// 		if ((gMenuListCount - 1) != gMenuCursor || (i != 2)) { // If we're not on the last menu item, draw the one below
+	// 			UI_PrintString(MenuList[gMenuCursor + i - 1], 0, 127, i * 2, 8, false);
+	// 		}
+	// 	}
+	// }
+	UI_PrintString(MenuList[gMenuCursor], 0, 127, 0, 7, true);
+	// Invert the selected menu item (to make it white on black)
+	for (i = 0; i < 128; i++) {
+	 	gFrameBuffer[0][i] ^= 0xFF;
+	 	gFrameBuffer[1][i] ^= 0xFF;
 	}
-	for (i = 0; i < 48; i++) {
-		gFrameBuffer[2][i] ^= 0xFF;
-		gFrameBuffer[3][i] ^= 0xFF;
-	}
-	for (i = 0; i < 7; i++) {
-		gFrameBuffer[i][48] = 0xFF;
-		gFrameBuffer[i][49] = 0xFF;
+	// Draw the line separating the menu options from the menu
+	for (i = 0; i < 128; i++) {
+		if(i % 16 != 0)
+		gFrameBuffer[2][i] = 0b00010000;
+		else
+		gFrameBuffer[2][i] = 0b00111000;
+		// Draw a small indicator moving along from left to right to indicate the progress along the menu
+		gFrameBuffer[2][gMenuCursor * 9 / 4] = 0b11111100;
+		// gFrameBuffer[2][i+1] = 0b11111100;
+		// gFrameBuffer[2][i+2] = 0b11111100;
+		// gFrameBuffer[2][i+3] = 0b11111100;
 	}
 	NUMBER_ToDigits(gMenuCursor + 1, String);
-	UI_DisplaySmallDigits(2, String + 6, 33, 6);
+	UI_DisplaySmallDigits(2, String + 6, 0, 0);
+	// HACK: Invert the area where the digits are printed
+	for (i = 0; i < 14; i++) {
+		gFrameBuffer[0][i] ^= 0xFF;
+	}
 	if (gIsInSubMenu) {
-		memcpy(gFrameBuffer[0] + 50, BITMAP_CurrentIndicator, sizeof(BITMAP_CurrentIndicator));
+		memcpy(gFrameBuffer[3] + 64 + 8, BITMAP_CurrentIndicator, sizeof(BITMAP_CurrentIndicator));
 	}
 
 	memset(String, 0, sizeof(String));
@@ -240,7 +254,7 @@ void UI_DisplayMenu(void)
 
 	case MENU_OFFSET:
 		if (!gIsInSubMenu || gInputBoxIndex == 0) {
-			sprintf(String, "%.5f", gSubMenuSelection * 1e-05);
+			sprintf(String, "%.5fMHz", gSubMenuSelection * 1e-05);
 			break;
 		}
 		for (i = 0; i < 3; i++) {
@@ -260,9 +274,9 @@ void UI_DisplayMenu(void)
 		}
 		String[7] = 0x2d;
 		String[8] = '-';
-		String[9] = 0;
-		String[10] = 0;
-		String[11] = 0;
+		String[9] = 'M';
+		String[10] = 'H';
+		String[11] = 'z';
 		break;
 
 	case MENU_W_N:
@@ -411,11 +425,9 @@ void UI_DisplayMenu(void)
 		break;
 	}
 
-	UI_PrintString(String, 50, 127, 2, 8, true);
+	UI_PrintString(String, 0, 127, 3, 8, true);
 
-	if (gMenuCursor == MENU_OFFSET) {
-		UI_PrintString("MHz", 50, 127, 4, 8, true);
-	}
+
 
 	if ((gMenuCursor == MENU_RESET || gMenuCursor == MENU_MEM_CH || gMenuCursor == MENU_DEL_CH) && gAskForConfirmation) {
 		if (gAskForConfirmation == 1) {
@@ -423,28 +435,28 @@ void UI_DisplayMenu(void)
 		} else {
 			strcpy(String, "WAIT!");
 		}
-		UI_PrintString(String, 50, 127, 4, 8, true);
+		UI_PrintString(String, 0, 127, 4, 8, true);
 	}
 
 	if ((gMenuCursor == MENU_R_CTCS || gMenuCursor == MENU_R_DCS) && g_20000381) {
-		UI_PrintString("SCAN", 50, 127, 4, 8, true);
+		UI_PrintString("SCAN", 0, 127, 4, 8, true);
 	}
 
 	if (gMenuCursor == MENU_UPCODE) {
 		if (strlen(gEeprom.DTMF_UP_CODE) > 8) {
-			UI_PrintString(gEeprom.DTMF_UP_CODE + 8, 50, 127, 4, 8, true);
+			UI_PrintString(gEeprom.DTMF_UP_CODE + 8, 0, 127, 4, 8, true);
 		}
 	}
 	if (gMenuCursor == MENU_DWCODE) {
 		if (strlen(gEeprom.DTMF_DOWN_CODE) > 8) {
-			UI_PrintString(gEeprom.DTMF_DOWN_CODE + 8, 50, 127, 4, 8, true);
+			UI_PrintString(gEeprom.DTMF_DOWN_CODE + 8, 0, 127, 4, 8, true);
 		}
 	}
 	if (gMenuCursor == MENU_D_LIST && gIsDtmfContactValid) {
 		Contact[11] = 0;
 		memcpy(&gDTMF_ID, Contact + 8, 4);
 		sprintf(String, "ID:%s", Contact + 8);
-		UI_PrintString(String, 50, 127, 4, 8, true);
+		UI_PrintString(String, 0, 127, 5, 8, true);
 	}
 
 	if (gMenuCursor == MENU_R_CTCS || gMenuCursor == MENU_T_CTCS ||
@@ -453,7 +465,7 @@ void UI_DisplayMenu(void)
 
 			NUMBER_ToDigits((uint8_t)gSubMenuSelection, String);
 			Offset = (gMenuCursor == MENU_D_LIST) ? 2 : 3;
-			UI_DisplaySmallDigits(Offset, String + (8 - Offset), 105, 0);
+			UI_DisplaySmallDigits(Offset, String + (8 - Offset), 105, 6);
 	}
 
 	if (gMenuCursor == MENU_SLIST1 || gMenuCursor == MENU_SLIST2) {
@@ -466,16 +478,16 @@ void UI_DisplayMenu(void)
 		}
 
 		if (gSubMenuSelection == 0xFF || gEeprom.SCAN_LIST_ENABLED[i] != true) {
-			UI_PrintString(String, 50, 127, 2, 8, 1);
+			UI_PrintString(String, 0, 127, 4, 8, 1);
 		} else {
 			UI_PrintString(String, 50, 127, 0, 8, 1);
 			if (IS_MR_CHANNEL(gEeprom.SCANLIST_PRIORITY_CH1[i])) {
 				sprintf(String, "PRI1:%d", gEeprom.SCANLIST_PRIORITY_CH1[i] + 1);
-				UI_PrintString(String, 50, 127, 2, 8, 1);
+				UI_PrintString(String, 0, 127, 5, 8, 1);
 			}
 			if (IS_MR_CHANNEL(gEeprom.SCANLIST_PRIORITY_CH2[i])) {
 				sprintf(String, "PRI2:%d", gEeprom.SCANLIST_PRIORITY_CH2[i] + 1);
-				UI_PrintString(String, 50, 127, 4, 8, 1);
+				UI_PrintString(String, 0, 127, 5, 8, 1);
 			}
 		}
 	}
