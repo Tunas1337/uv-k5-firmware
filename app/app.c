@@ -90,7 +90,7 @@ static void FUN_00005144(void)
 
 void APP_CheckDTMFStuff(void)
 {
-	char String[20];
+	char DTMFString[20];
 	uint8_t Offset;
 
 	if (!g_200003AA) {
@@ -109,8 +109,8 @@ void APP_CheckDTMFStuff(void)
 
 	if (8 < gDTMF_WriteIndex) {
 		Offset = gDTMF_WriteIndex - 9;
-		sprintf(String, "%s%c%s", gEeprom.ANI_DTMF_ID, gEeprom.DTMF_SEPARATE_CODE, gEeprom.KILL_CODE);
-		if (DTMF_CompareMessage(gDTMF_Received + Offset, String, 9, true)) {
+		sprintf(DTMFString, "%s%c%s", gEeprom.ANI_DTMF_ID, gEeprom.DTMF_SEPARATE_CODE, gEeprom.KILL_CODE);
+		if (DTMF_CompareMessage(gDTMF_Received + Offset, DTMFString, 9, true)) {
 			if (gEeprom.PERMIT_REMOTE_KILL) {
 				gSetting_KILLED = true;
 				SETTINGS_SaveSettings();
@@ -127,8 +127,8 @@ void APP_CheckDTMFStuff(void)
 			g_2000036F = true;
 			return;
 		} else {
-			sprintf(String, "%s%c%s", gEeprom.ANI_DTMF_ID, gEeprom.DTMF_SEPARATE_CODE, gEeprom.REVIVE_CODE);
-			if (DTMF_CompareMessage(gDTMF_Received + Offset, String, 9, true)) {
+			sprintf(DTMFString, "%s%c%s", gEeprom.ANI_DTMF_ID, gEeprom.DTMF_SEPARATE_CODE, gEeprom.REVIVE_CODE);
+			if (DTMF_CompareMessage(gDTMF_Received + Offset, DTMFString, 9, true)) {
 				gSetting_KILLED = false;
 				SETTINGS_SaveSettings();
 				g_200003BE = 2;
@@ -149,8 +149,8 @@ void APP_CheckDTMFStuff(void)
 	}
 	if (g_200003BC == 1 && g_20000438 == 0 && 8 < gDTMF_WriteIndex) {
 		Offset = gDTMF_WriteIndex - 9;
-		sprintf(String, "%s%c%s", gDTMF_String, gEeprom.DTMF_SEPARATE_CODE, "AAAAA");
-		if (DTMF_CompareMessage(gDTMF_Received + Offset, String, 9, false)) {
+		sprintf(DTMFString, "%s%c%s", gDTMF_String, gEeprom.DTMF_SEPARATE_CODE, "AAAAA");
+		if (DTMF_CompareMessage(gDTMF_Received + Offset, DTMFString, 9, false)) {
 			g_CalloutAndDTMF_State = 2;
 			gUpdateDisplay = true;
 		}
@@ -165,9 +165,9 @@ void APP_CheckDTMFStuff(void)
 		return;
 	}
 	Offset = gDTMF_WriteIndex - 7;
-	sprintf(String, "%s%c", gEeprom.ANI_DTMF_ID, gEeprom.DTMF_SEPARATE_CODE);
+	sprintf(DTMFString, "%s%c", gEeprom.ANI_DTMF_ID, gEeprom.DTMF_SEPARATE_CODE);
 	g_20000439 = false;
-	if (!DTMF_CompareMessage(gDTMF_Received + Offset, String, 4, true)) {
+	if (!DTMF_CompareMessage(gDTMF_Received + Offset, DTMFString, 4, true)) {
 		return;
 	}
 	g_200003BC = 2;
