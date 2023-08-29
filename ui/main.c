@@ -148,7 +148,7 @@ void UI_DisplayMain(void)
 		}
 
 		// 0x8F3C
-		if (gEeprom.ScreenChannel[i] < 200) {
+		if (IS_MR_CHANNEL(gEeprom.ScreenChannel[i])) {
 			memcpy(pLine1 + 2, BITMAP_M, sizeof(BITMAP_M));
 			if (gInputBoxIndex == 0 || gEeprom.TX_CHANNEL != i) {
 				NUMBER_ToDigits(gEeprom.ScreenChannel[i] + 1, String);
@@ -156,7 +156,7 @@ void UI_DisplayMain(void)
 				memcpy(String + 5, gInputBox, 3);
 			}
 			UI_DisplaySmallDigits(3, String + 5, 10, Line + 1);
-		} else if (gEeprom.ScreenChannel[i] < 207) {
+		} else if (IS_NOT_NOAA_CHANNEL(gEeprom.ScreenChannel[i])) {
 			char c;
 
 			memcpy(pLine1 + 14, BITMAP_F, sizeof(BITMAP_F));
@@ -214,10 +214,10 @@ void UI_DisplayMain(void)
 			}
 			UI_PrintString(String, 31, 111, i * 4, Width, true);
 		} else {
-			if (gInputBoxIndex && (gEeprom.ScreenChannel[i] - 200) < 7 && gEeprom.TX_CHANNEL == i) {
+			if (gInputBoxIndex && IS_FREQ_CHANNEL(gEeprom.ScreenChannel[i]) && gEeprom.TX_CHANNEL == i) {
 				UI_DisplayFrequency(gInputBox, 31, i * 4, true, false);
 			} else {
-				if (gEeprom.ScreenChannel[i] < 200) {
+				if (IS_MR_CHANNEL(gEeprom.ScreenChannel[i])) {
 					if (gEeprom.CHANNEL_DISPLAY_MODE == 2 && (gEeprom.VfoInfo[i].Name[0] == 0 || gEeprom.VfoInfo[i].Name[0] == 0xFF)) {
 						sprintf(String, "CH-%03d", gEeprom.ScreenChannel[i] + 1);
 						UI_PrintString(String, 31, 112, i * 4, 8, true);
@@ -239,7 +239,7 @@ void UI_DisplayMain(void)
 								NUMBER_ToDigits(gEeprom.VfoInfo[i].pDCS_Current->Frequency, String);
 							}
 							UI_DisplayFrequency(String, 31, i * 4, false, false);
-							if (gEeprom.ScreenChannel[i] < 200) {
+							if (IS_MR_CHANNEL(gEeprom.ScreenChannel[i])) {
 								const uint8_t Attributes = gMR_ChannelAttributes[gEeprom.ScreenChannel[i]];
 								if (Attributes & MR_CH_SCANLIST1) {
 									memcpy(pLine0 + 113, BITMAP_ScanList, sizeof(BITMAP_ScanList));
@@ -275,7 +275,7 @@ void UI_DisplayMain(void)
 						NUMBER_ToDigits(gEeprom.VfoInfo[i].pDCS_Current->Frequency, String);
 					}
 					UI_DisplayFrequency(String, 31, i * 4, false, false);
-					if (gEeprom.ScreenChannel[i] < 200) {
+					if (IS_MR_CHANNEL(gEeprom.ScreenChannel[i])) {
 						const uint8_t Attributes = gMR_ChannelAttributes[gEeprom.ScreenChannel[i]];
 						if (Attributes & MR_CH_SCANLIST1) {
 							memcpy(pLine0 + 113, BITMAP_ScanList, sizeof(BITMAP_ScanList));
