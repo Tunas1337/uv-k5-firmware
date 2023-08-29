@@ -78,7 +78,7 @@ void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			uint32_t Frequency;
 
 			if (gInputBoxIndex < 6) {
-				gAnotherVoiceID = Key;
+				gAnotherVoiceID = (VOICE_ID_t)Key;
 				return;
 			}
 			gInputBoxIndex = 0;
@@ -115,7 +115,7 @@ void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			uint8_t Channel;
 
 			if (gInputBoxIndex != 2) {
-				gAnotherVoiceID = Key;
+				gAnotherVoiceID = (VOICE_ID_t)Key;
 				gRequestDisplayScreen = DISPLAY_MAIN;
 				return;
 			}
