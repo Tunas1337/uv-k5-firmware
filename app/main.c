@@ -49,7 +49,7 @@ void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 	}
 
 	gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
-
+	// If function key was NOT pressed
 	if (!gWasFKeyPressed) {
 		INPUTBOX_Append(Key);
 		gRequestDisplayScreen = DISPLAY_MAIN;
@@ -111,6 +111,7 @@ void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 				}
 			}
 		} else {
+		// If function key WAS pressed
 			uint8_t Channel;
 
 			if (gInputBoxIndex != 2) {
