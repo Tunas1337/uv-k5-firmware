@@ -176,17 +176,17 @@ void UI_DisplayMenu(void)
 	uint8_t i;
 
 	memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
-	// Draw (at most) 3 menu items on the screen: the selected one, and one above and below it
-	// for (i = 0; i < 3; i++) {
-	// 	if (gMenuCursor || i) { // If we're not on the first menu item, draw the one above
-	// 		if ((gMenuListCount - 1) != gMenuCursor || (i != 2)) { // If we're not on the last menu item, draw the one below
-	// 			UI_PrintString(MenuList[gMenuCursor + i - 1], 0, 127, i * 2, 8, false);
-	// 		}
-	// 	}
-	// }
-	UI_PrintString(MenuList[gMenuCursor], 0, 127, 0, 7, true);
+	// Draw (at most) 3 menu items on the screen: the selected one, and one before and after to the left and right respectively
+	 for (i = 0; i < 3; i++) {
+	 	if (gMenuCursor || i) { // If we're not on the first menu item, draw the one to the left
+	 		if ((gMenuListCount - 1) != gMenuCursor || (i != 2)) { // If we're not on the last menu item, draw the one to the right
+	 			UI_PrintString(MenuList[gMenuCursor + i - 1], i * 42, 42 + i * 42, 0, 8, false);
+	 		}
+	 	}
+	}
+	// UI_PrintString(MenuList[gMenuCursor], 0, 127, 0, 7, true);
 	// Invert the selected menu item (to make it white on black)
-	for (i = 0; i < 128; i++) {
+	for (i = 42; i < 84; i++) {
 	 	gFrameBuffer[0][i] ^= 0xFF;
 	 	gFrameBuffer[1][i] ^= 0xFF;
 	}
@@ -203,13 +203,13 @@ void UI_DisplayMenu(void)
 		// gFrameBuffer[2][i+3] = 0b11111100;
 	}
 	NUMBER_ToDigits(gMenuCursor + 1, String);
-	UI_DisplaySmallDigits(2, String + 6, 0, 0);
+	UI_DisplaySmallDigits(2, String + 6, 0, 3);
 	// HACK: Invert the area where the digits are printed
-	for (i = 0; i < 14; i++) {
-		gFrameBuffer[0][i] ^= 0xFF;
-	}
+	// for (i = 0; i < 14; i++) {
+	// 	gFrameBuffer[0][i] ^= 0xFF;
+	// }
 	if (gIsInSubMenu) {
-		memcpy(gFrameBuffer[3] + 64 + 8, BITMAP_CurrentIndicator, sizeof(BITMAP_CurrentIndicator));
+		memcpy(gFrameBuffer[3] + 8, BITMAP_CurrentIndicator, sizeof(BITMAP_CurrentIndicator));
 	}
 
 	memset(String, 0, sizeof(String));
