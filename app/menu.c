@@ -100,6 +100,7 @@ static void FUN_000074f8(int8_t Direction)
 	gSystickFlag9 = false;
 }
 
+// Defines the range of options in each menu item's submenu
 int MENU_GetLimits(uint8_t Cursor, uint8_t *pMin, uint8_t *pMax)
 {
 	switch (Cursor) {
@@ -188,6 +189,7 @@ int MENU_GetLimits(uint8_t Cursor, uint8_t *pMin, uint8_t *pMax)
 	return 0;
 }
 
+// Accepts/applies the setting selected in the submenu
 void MENU_AcceptSetting(void)
 {
 	uint8_t Min, Max;
@@ -565,6 +567,7 @@ static void MENU_ClampSelection(int8_t Direction)
 	}
 }
 
+// Handles displaying the current value of a setting in the submenu
 void MENU_ShowCurrentSetting(void)
 {
 	switch (gMenuCursor) {
@@ -814,8 +817,13 @@ void MENU_ShowCurrentSetting(void)
 	}
 }
 
-//
-
+/**
+ * Handles the input of digits during menu navigation.
+ * 
+ * @param Key The key code of the pressed key.
+ * @param bKeyPressed Whether the key was pressed or released.
+ * @param bKeyHeld Whether the key is being held down.
+ */
 void MENU_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
 	uint16_t Value = 0;
@@ -875,7 +883,7 @@ void MENU_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			gInputBoxIndex = 0;
 			Value = ((gInputBox[0] * 100) + (gInputBox[1] * 10) + gInputBox[2]) - 1;
 			if (IS_MR_CHANNEL(Value)) {
-				gAnotherVoiceID = Key;
+				gAnotherVoiceID = (VOICE_ID_t)Key;
 				gSubMenuSelection = Value;
 				return;
 			}
