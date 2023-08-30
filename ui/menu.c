@@ -28,27 +28,27 @@
 #include "ui/menu.h"
 #include "ui/ui.h"
 
-static const char MenuList[][9] = {
+static const char MenuList[][7] = {
 	// 0x00
-	"Squelch",    "Step",    "TXPwr",    "RxDCS",
-	"RxCTC", "TxDCS",   "TxCTC", "SftDir",
+	"SQL",    "STEP",    "TXP",    "R_DCS",
+	"R_CTCS", "T_DCS",   "T_CTCS", "SFT-D",
 	// 0x08
-	"Offset", "Wide/Nar",     "Scramble",    "BusyLck",
-	"SaveCh", "PwrSave",    "Vox",    "BLTimeout",
+	"OFFSET", "W/N",     "SCR",    "BCL",
+	"MEM-CH", "SAVE",    "VOX",    "ABR",
 	// 0x10
-	"DualWatch",    "CrossBand",      "Beep",   "TXTimeout",
-	"Voice",  "ScanMode",  "ChanDsply",    "AutoLock",
+	"TDR",    "WX",      "BEEP",   "TOT",
+	"VOICE",  "SC-REV",  "MDF",    "AUTOLK",
 	// 0x18
-	"AddList1", "AddList2",  "STE",    "RPT-STE",
-	"MicGain",    "1-Call",  "ScanList", "SList1",
+	"S-ADD1", "S-ADD2",  "STE",    "RP-STE",
+	"MIC",    "1-CALL",  "S-LIST", "SLIST1",
 	// 0x20
-	"SList2", "AlarmMode",  "ANI-ID", "UpCode",
-	"DownCode", "DT-Local",    "DT-Resp",  "D-Hold",
+	"SLIST2", "AL-MOD",  "ANI-ID", "UPCODE",
+	"DWCODE", "D-ST",    "D-RSP",  "D-HOLD",
 	// 0x28
-	"D-Pre",  "PTT-ID",  "D-Decode",  "D-List",
-	"PONMsg", "Roger",   "Voltage",    "AM",
+	"D-PRE",  "PTT-ID",  "D-DCD",  "D-LIST",
+	"PONMSG", "ROGER",   "VOL",    "AM",
 	// 0x30
-	"NOAA Scan", "DelCh",  "Reset",  "350TX",
+	"NOAA_S", "DEL-CH",  "RESET",  "350TX",
 	"F-LOCK", "200TX",   "500TX",  "350EN",
 	// 0x38
 	"SCREN",
@@ -180,7 +180,7 @@ void UI_DisplayMenu(void)
 	 for (i = 0; i < 3; i++) {
 	 	if (gMenuCursor || i) { // If we're not on the first menu item, draw the one to the left
 	 		if ((gMenuListCount - 1) != gMenuCursor || (i != 2)) { // If we're not on the last menu item, draw the one to the right
-	 			UI_PrintString(MenuList[gMenuCursor + i - 1], i * 42, 42 + i * 42, 0, 8, false);
+ 				UI_PrintString(MenuList[gMenuCursor + i - 1], i * 42, 42 + i * 42, 0, 7, true);
 	 		}
 	 	}
 	}
