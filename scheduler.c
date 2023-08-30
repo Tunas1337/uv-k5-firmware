@@ -43,11 +43,11 @@ void SystickHandler(void)
 	if (gSystickCountdown2) {
 		gSystickCountdown2--;
 	}
-	if (gSystickCountdown3) {
-		gSystickCountdown3--;
+	if (gFoundCDCSSCountdown) {
+		gFoundCDCSSCountdown--;
 	}
-	if (gSystickCountdown4) {
-		gSystickCountdown4--;
+	if (gFoundCTCSSCountdown) {
+		gFoundCTCSSCountdown--;
 	}
 	if (gCurrentFunction == FUNCTION_0 && gBatterySaveCountdown) {
 		gBatterySaveCountdown--;
@@ -63,7 +63,7 @@ void SystickHandler(void)
 	}
 	if (gStepDirection == 0 && g_20000381 == 0 && gEeprom.DUAL_WATCH != DUAL_WATCH_OFF) {
 		if (gCurrentFunction != FUNCTION_MONITOR && gCurrentFunction != FUNCTION_TRANSMIT) {
-			if (gCurrentFunction != FUNCTION_4) {
+			if (gCurrentFunction != FUNCTION_RECEIVE) {
 				if (g_2000033A) {
 					g_2000033A--;
 					if (g_2000033A == 0) {
@@ -76,7 +76,7 @@ void SystickHandler(void)
 
 	if (gStepDirection == 0 && g_20000381 == 0 && gEeprom.DUAL_WATCH == DUAL_WATCH_OFF) {
 		if (gIsNoaaMode && gCurrentFunction != FUNCTION_MONITOR && gCurrentFunction != FUNCTION_TRANSMIT) {
-			if (gCurrentFunction != FUNCTION_4) {
+			if (gCurrentFunction != FUNCTION_RECEIVE) {
 				if (g_20000356) {
 					g_20000356--;
 					if (g_20000356 == 0) {
@@ -113,7 +113,7 @@ void SystickHandler(void)
 	}
 
 	if (gFM_Step && gCurrentFunction != FUNCTION_MONITOR) {
-		if (gCurrentFunction != FUNCTION_TRANSMIT && gCurrentFunction != FUNCTION_4) {
+		if (gCurrentFunction != FUNCTION_TRANSMIT && gCurrentFunction != FUNCTION_RECEIVE) {
 			if (gFmPlayCountdown) {
 				gFmPlayCountdown--;
 				if (gFmPlayCountdown == 0) {

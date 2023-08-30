@@ -687,7 +687,7 @@ void BK4819_TransmitTone(bool bLocalLoopback, uint32_t Frequency)
 	BK4819_EnterTxMute();
 	BK4819_WriteRegister(BK4819_REG_70, 0
 			| BK4819_REG_70_MASK_ENABLE_TONE1
-			| (64U << BK4819_REG_70_SHIFT_TONE1_TUNING_GAIN));
+			| (96U << BK4819_REG_70_SHIFT_TONE1_TUNING_GAIN));
 	BK4819_WriteRegister(BK4819_REG_71, (uint16_t)(Frequency * 10.32444));
 	if (bLocalLoopback) {
 		BK4819_SetAF(BK4819_AF_BEEP);
@@ -814,14 +814,14 @@ uint8_t BK4819_GetDTMF_5TONE_Code(void)
         return (BK4819_GetRegister(BK4819_REG_0B) >> 8) & 0x0F;
 }
 
-uint8_t BK4819_CheckCDCSSCodeReceived(void)
+uint8_t BK4819_GetCDCSSCodeType(void)
 {
         return (BK4819_GetRegister(BK4819_REG_0C) >> 14) & 3;
 }
 
-uint8_t BK4819_GetCTCSSPhaseShift(void)
+uint8_t BK4819_GetCTCType(void)
 {
-        return (BK4819_GetRegister(BK4819_REG_0C) >> 14) & 3;
+        return (BK4819_GetRegister(BK4819_REG_0C) >> 10) & 3;
 }
 
 void BK4819_SendFSKData(uint16_t *pData)
