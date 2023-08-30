@@ -36,13 +36,13 @@ FUNCTION_Type_t gCurrentFunction;
 
 void FUNCTION_Init(void)
 {
-	if (IS_NOT_NOAA_CHANNEL(gInfoCHAN_A->CHANNEL_SAVE)) {
+	if (IS_NOT_NOAA_CHANNEL(gRxInfo->CHANNEL_SAVE)) {
 		gCopyOfCodeType = gCodeType;
 		if (g_20000381 == 0) {
-			if (gInfoCHAN_A->IsAM == true) {
+			if (gRxInfo->IsAM) {
 				gCopyOfCodeType = CODE_TYPE_OFF;
 			} else {
-				gCopyOfCodeType = gInfoCHAN_A->pDCS_Current->CodeType;
+				gCopyOfCodeType = gRxInfo->pDCS_Current->CodeType;
 			}
 		}
 	} else {
@@ -87,7 +87,7 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 	}
 
 	if (Function == FUNCTION_0) {
-		if (g_200003BE != 0) {
+		if (g_200003BE) {
 			RADIO_Something();
 		}
 		if (PreviousFunction == FUNCTION_TRANSMIT) {
@@ -126,7 +126,7 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 		BK4819_Sleep();
 		BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2, false);
 		gBatterySaveCountdownExpired = false;
-		g_2000036F = 1;
+		gUpdateStatus = true;
 		GUI_SelectNextDisplay(DISPLAY_MAIN);
 		return;
 	}
@@ -175,7 +175,7 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 			sprintf(String, "%s%c%s", gEeprom.ANI_DTMF_ID, gEeprom.DTMF_SEPARATE_CODE, "AAAAA");
 			pString = String;
 		}
-		if (g_200003BC != 0 || (gCrossTxRadioInfo->DTMF_PTT_ID_TX_MODE != 1 && gCrossTxRadioInfo->DTMF_PTT_ID_TX_MODE != 3)) {
+		if (g_200003BC || (gCrossTxRadioInfo->DTMF_PTT_ID_TX_MODE != 1 && gCrossTxRadioInfo->DTMF_PTT_ID_TX_MODE != 3)) {
 			g_200003BE = 0;
 			goto Skip;
 		}
@@ -183,7 +183,7 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 	}
 	g_200003BE = 0;
 	Delay = gEeprom.DTMF_PRELOAD_TIME;
-	if (gEeprom.DTMF_SIDE_TONE == true) {
+	if (gEeprom.DTMF_SIDE_TONE) {
 		GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
 		g_2000036B = 1;
 		Delay = gEeprom.DTMF_PRELOAD_TIME;
@@ -209,7 +209,7 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 	BK4819_ExitDTMF_TX(false);
 
 Skip:
-	if (g_20000383 != 0) {
+	if (g_20000383) {
 		if (g_20000383 == 3) {
 			BK4819_TransmitTone(true, 1750);
 		} else {
@@ -224,7 +224,7 @@ Skip:
 		gBatterySaveCountdown = 1000;
 		return;
 	}
-	if (gCrossTxRadioInfo->SCRAMBLING_TYPE && gSetting_ScrambleEnable != false) {
+	if (gCrossTxRadioInfo->SCRAMBLING_TYPE && gSetting_ScrambleEnable) {
 		BK4819_EnableScramble(gCrossTxRadioInfo->SCRAMBLING_TYPE - 1U);
 		gBatterySaveCountdown = 1000;
 		gSchedulePowerSave = false;

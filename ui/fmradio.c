@@ -44,7 +44,7 @@ void UI_DisplayFM(void)
 		strcpy(String, "DEL?");
 	} else {
 		if (gFM_Step == 0) {
-			if (gEeprom.FM_IsChannelSelected == false) {
+			if (!gEeprom.FM_IsChannelSelected) {
 				for (i = 0; i < 20; i++) {
 					if (gEeprom.FM_FrequencyToPlay == gFM_Channels[i]) {
 						sprintf(String, "VFO(CH%02d)", i + 1);
@@ -58,10 +58,10 @@ void UI_DisplayFM(void)
 				sprintf(String, "MR(CH%02d)", gEeprom.FM_CurrentChannel + 1);
 			}
 		} else {
-			if (gIs_A_Scan == false) {
+			if (!gFM_AutoScan) {
 				strcpy(String, "M-SCAN");
 			} else {
-				sprintf(String, "A-SCAN(%d)", gA_Scan_Channel + 1);
+				sprintf(String, "A-SCAN(%d)", gFM_ScanFoundIndex + 1);
 			}
 		}
 	}
@@ -70,7 +70,7 @@ void UI_DisplayFM(void)
 	memset(String, 0, sizeof(String));
 
 	if (gAskToSave || (gEeprom.FM_IsChannelSelected && gInputBoxIndex)) {
-		UI_GenerateChannelString(String, gA_Scan_Channel);
+		UI_GenerateChannelString(String, gFM_ScanFoundIndex);
 	} else if (!gAskToDelete) {
 		if (gInputBoxIndex == 0) {
 			NUMBER_ToDigits(gEeprom.FM_FrequencyToPlay * 10000, String);
