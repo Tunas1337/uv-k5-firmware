@@ -209,7 +209,7 @@ void UI_DisplayMenu(void)
 	// 	gFrameBuffer[0][i] ^= 0xFF;
 	// }
 	if (gIsInSubMenu) {
-		memcpy(gFrameBuffer[3] + 8, BITMAP_CurrentIndicator, sizeof(BITMAP_CurrentIndicator));
+		memcpy(gFrameBuffer[3] + 20, BITMAP_CurrentIndicator, sizeof(BITMAP_CurrentIndicator));
 	}
 
 	memset(String, 0, sizeof(String));
@@ -244,7 +244,7 @@ void UI_DisplayMenu(void)
 		if (gSubMenuSelection == 0) {
 			strcpy(String, "OFF");
 		} else {
-			sprintf(String, "%.1fHz", CTCSS_Options[gSubMenuSelection] * 0.1);
+			sprintf(String, "%.1fHz", CTCSS_Options[gSubMenuSelection - 1] * 0.1);
 		}
 		break;
 
