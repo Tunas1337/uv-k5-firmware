@@ -209,7 +209,7 @@ void UI_DisplayMenu(void)
 	// 	gFrameBuffer[0][i] ^= 0xFF;
 	// }
 	if (gIsInSubMenu) {
-		memcpy(gFrameBuffer[3] + 8, BITMAP_CurrentIndicator, sizeof(BITMAP_CurrentIndicator));
+		memcpy(gFrameBuffer[3] + 20, BITMAP_CurrentIndicator, sizeof(BITMAP_CurrentIndicator));
 	}
 
 	memset(String, 0, sizeof(String));
