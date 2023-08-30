@@ -435,21 +435,21 @@ void UI_DisplayMenu(void)
 		} else {
 			strcpy(String, "WAIT!");
 		}
-		UI_PrintString(String, 0, 127, 4, 8, true);
+		UI_PrintString(String, 0, 127, 5, 8, true);
 	}
 
 	if ((gMenuCursor == MENU_R_CTCS || gMenuCursor == MENU_R_DCS) && g_20000381) {
-		UI_PrintString("SCAN", 0, 127, 4, 8, true);
+		UI_PrintString("SCAN", 0, 127, 5, 8, true);
 	}
 
 	if (gMenuCursor == MENU_UPCODE) {
 		if (strlen(gEeprom.DTMF_UP_CODE) > 8) {
-			UI_PrintString(gEeprom.DTMF_UP_CODE + 8, 0, 127, 4, 8, true);
+			UI_PrintString(gEeprom.DTMF_UP_CODE + 8, 0, 127, 3, 8, true);
 		}
 	}
 	if (gMenuCursor == MENU_DWCODE) {
 		if (strlen(gEeprom.DTMF_DOWN_CODE) > 8) {
-			UI_PrintString(gEeprom.DTMF_DOWN_CODE + 8, 0, 127, 4, 8, true);
+			UI_PrintString(gEeprom.DTMF_DOWN_CODE + 8, 0, 127, 3, 8, true);
 		}
 	}
 	if (gMenuCursor == MENU_D_LIST && gIsDtmfContactValid) {
@@ -478,9 +478,9 @@ void UI_DisplayMenu(void)
 		}
 
 		if (gSubMenuSelection == 0xFF || gEeprom.SCAN_LIST_ENABLED[i] != true) {
-			UI_PrintString(String, 0, 127, 4, 8, 1);
+			UI_PrintString(String, 0, 127, 3, 8, 1);
 		} else {
-			UI_PrintString(String, 0, 127, 4, 8, 1);
+			UI_PrintString(String, 0, 127, 3, 8, 1);
 			if (IS_MR_CHANNEL(gEeprom.SCANLIST_PRIORITY_CH1[i])) {
 				sprintf(String, "PRI1:%d", gEeprom.SCANLIST_PRIORITY_CH1[i] + 1);
 				UI_PrintString(String, 0, 127, 5, 8, 1);
