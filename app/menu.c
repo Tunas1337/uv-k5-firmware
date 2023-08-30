@@ -109,7 +109,7 @@ int MENU_GetLimits(uint8_t Cursor, uint8_t *pMin, uint8_t *pMax)
 		*pMax = 9;
 		break;
 	case MENU_STEP:
-		if (gTxRadioInfo->Band == BAND2_108MHz) {
+		if (gTxInfo->Band == BAND2_108MHz) {
 			*pMin = 0;
 			*pMax = 6;
 			break;
@@ -214,16 +214,16 @@ void MENU_AcceptSetting(void)
 		return;
 
 	case MENU_STEP:
-		if (IS_FREQ_CHANNEL(gTxRadioInfo->CHANNEL_SAVE)) {
-			gTxRadioInfo->STEP_SETTING = gSubMenuSelection;
+		if (IS_FREQ_CHANNEL(gTxInfo->CHANNEL_SAVE)) {
+			gTxInfo->STEP_SETTING = gSubMenuSelection;
 			gRequestSaveChannel = 1;
 			return;
 		}
-		gSubMenuSelection = gTxRadioInfo->STEP_SETTING;
+		gSubMenuSelection = gTxInfo->STEP_SETTING;
 		return;
 
 	case MENU_TXP:
-		gTxRadioInfo->OUTPUT_POWER = gSubMenuSelection;
+		gTxInfo->OUTPUT_POWER = gSubMenuSelection;
 		gRequestSaveChannel = 1;
 		return;
 
@@ -232,20 +232,20 @@ void MENU_AcceptSetting(void)
 		// Fallthrough
 	case MENU_T_DCS:
 		if (gSubMenuSelection == 0) {
-			if (gTxRadioInfo->DCS[Sel].CodeType != CODE_TYPE_DIGITAL && gTxRadioInfo->DCS[Sel].CodeType != CODE_TYPE_REVERSE_DIGITAL) {
+			if (gTxInfo->DCS[Sel].CodeType != CODE_TYPE_DIGITAL && gTxInfo->DCS[Sel].CodeType != CODE_TYPE_REVERSE_DIGITAL) {
 				gRequestSaveChannel = 1;
 				return;
 			}
 			Code = 0;
-			gTxRadioInfo->DCS[Sel].CodeType = CODE_TYPE_OFF;
+			gTxInfo->DCS[Sel].CodeType = CODE_TYPE_OFF;
 		} else if (gSubMenuSelection < 105) {
-			gTxRadioInfo->DCS[Sel].CodeType = CODE_TYPE_DIGITAL;
+			gTxInfo->DCS[Sel].CodeType = CODE_TYPE_DIGITAL;
 			Code = gSubMenuSelection - 1;
 		} else {
-			gTxRadioInfo->DCS[Sel].CodeType = CODE_TYPE_REVERSE_DIGITAL;
+			gTxInfo->DCS[Sel].CodeType = CODE_TYPE_REVERSE_DIGITAL;
 			Code = gSubMenuSelection - 105;
 		}
-		gTxRadioInfo->DCS[Sel].RX_TX_Code = Code;
+		gTxInfo->DCS[Sel].RX_TX_Code = Code;
 		gRequestSaveChannel = 1;
 		return;
 
@@ -254,47 +254,47 @@ void MENU_AcceptSetting(void)
 		// Fallthrough
 	case MENU_T_CTCS:
 		if (gSubMenuSelection == 0) {
-			if (gTxRadioInfo->DCS[Sel].CodeType != CODE_TYPE_CONTINUOUS_TONE) {
+			if (gTxInfo->DCS[Sel].CodeType != CODE_TYPE_CONTINUOUS_TONE) {
 				gRequestSaveChannel = 1;
 				return;
 			}
 			Code = 0;
-			gTxRadioInfo->DCS[Sel].CodeType = CODE_TYPE_OFF;
+			gTxInfo->DCS[Sel].CodeType = CODE_TYPE_OFF;
 		} else {
-			gTxRadioInfo->DCS[Sel].CodeType = CODE_TYPE_CONTINUOUS_TONE;
+			gTxInfo->DCS[Sel].CodeType = CODE_TYPE_CONTINUOUS_TONE;
 			Code = gSubMenuSelection - 1;
 		}
-		gTxRadioInfo->DCS[Sel].RX_TX_Code = Code;
+		gTxInfo->DCS[Sel].RX_TX_Code = Code;
 		gRequestSaveChannel = 1;
 		return;
 
 	case MENU_SFT_D:
-		gTxRadioInfo->FREQUENCY_DEVIATION_SETTING = gSubMenuSelection;
+		gTxInfo->FREQUENCY_DEVIATION_SETTING = gSubMenuSelection;
 		gRequestSaveChannel = 1;
 		return;
 
 	case MENU_OFFSET:
-		gTxRadioInfo->FREQUENCY_OF_DEVIATION = gSubMenuSelection;
+		gTxInfo->FREQUENCY_OF_DEVIATION = gSubMenuSelection;
 		gRequestSaveChannel = 1;
 		return;
 
 	case MENU_W_N:
-		gTxRadioInfo->CHANNEL_BANDWIDTH = gSubMenuSelection;
+		gTxInfo->CHANNEL_BANDWIDTH = gSubMenuSelection;
 		gRequestSaveChannel = 1;
 		return;
 
 	case MENU_SCR:
-		gTxRadioInfo->SCRAMBLING_TYPE = gSubMenuSelection;
+		gTxInfo->SCRAMBLING_TYPE = gSubMenuSelection;
 		gRequestSaveChannel = 1;
 		return;
 
 	case MENU_BCL:
-		gTxRadioInfo->BUSY_CHANNEL_LOCK = gSubMenuSelection;
+		gTxInfo->BUSY_CHANNEL_LOCK = gSubMenuSelection;
 		gRequestSaveChannel = 1;
 		return;
 
 	case MENU_MEM_CH:
-		gTxRadioInfo->CHANNEL_SAVE = gSubMenuSelection;
+		gTxInfo->CHANNEL_SAVE = gSubMenuSelection;
 		gRequestSaveChannel = 2;
 		gEeprom.MrChannel[0] = gSubMenuSelection;
 		return;
@@ -311,7 +311,7 @@ void MENU_AcceptSetting(void)
 		BOARD_EEPROM_LoadMoreSettings();
 		g_20000398 = 1;
 		gRequestSaveSettings = true;
-		g_2000036F = 1;
+		gUpdateStatus = true;
 		return;
 
 	case MENU_ABR:
@@ -327,20 +327,20 @@ void MENU_AcceptSetting(void)
 		gEeprom.DUAL_WATCH = gSubMenuSelection;
 		g_20000398 = 1;
 		gRequestSaveSettings = true;
-		g_2000036F = 1;
+		gUpdateStatus = true;
 		return;
 
 	case MENU_WX:
-		if (206 < gEeprom.ScreenChannel[0]) {
+		if (IS_NOAA_CHANNEL(gEeprom.ScreenChannel[0])) {
 			return;
 		}
-		if (206 < gEeprom.ScreenChannel[1]) {
+		if (IS_NOAA_CHANNEL(gEeprom.ScreenChannel[1])) {
 			return;
 		}
 		gEeprom.CROSS_BAND_RX_TX = gSubMenuSelection;
 		g_20000398 = 1;
 		gRequestSaveSettings = true;
-		g_2000036F = 1;
+		gUpdateStatus = true;
 		return;
 
 	case MENU_BEEP:
@@ -354,7 +354,7 @@ void MENU_AcceptSetting(void)
 	case MENU_VOICE:
 		gEeprom.VOICE_PROMPT = gSubMenuSelection;
 		gRequestSaveSettings = true;
-		g_2000036F = 1;
+		gUpdateStatus = true;
 		return;
 
 	case MENU_SC_REV:
@@ -371,15 +371,15 @@ void MENU_AcceptSetting(void)
 		break;
 
 	case MENU_S_ADD1:
-		gTxRadioInfo->SCANLIST1_PARTICIPATION = gSubMenuSelection;
-		SETTINGS_UpdateChannel(gTxRadioInfo->CHANNEL_SAVE, gTxRadioInfo, true);
+		gTxInfo->SCANLIST1_PARTICIPATION = gSubMenuSelection;
+		SETTINGS_UpdateChannel(gTxInfo->CHANNEL_SAVE, gTxInfo, true);
 		g_2000039A = 1;
 		g_2000039B = 1;
 		return;
 
 	case MENU_S_ADD2:
-		gTxRadioInfo->SCANLIST2_PARTICIPATION = gSubMenuSelection;
-		SETTINGS_UpdateChannel(gTxRadioInfo->CHANNEL_SAVE, gTxRadioInfo, true);
+		gTxInfo->SCANLIST2_PARTICIPATION = gSubMenuSelection;
+		SETTINGS_UpdateChannel(gTxInfo->CHANNEL_SAVE, gTxInfo, true);
 		g_2000039A = 1;
 		g_2000039B = 1;
 		return;
@@ -428,12 +428,12 @@ void MENU_AcceptSetting(void)
 		break;
 
 	case MENU_PTT_ID:
-		gTxRadioInfo->DTMF_PTT_ID_TX_MODE = gSubMenuSelection;
+		gTxInfo->DTMF_PTT_ID_TX_MODE = gSubMenuSelection;
 		gRequestSaveChannel = 1;
 		return;
 
 	case MENU_D_DCD:
-		gTxRadioInfo->DTMF_DECODING_ENABLE = gSubMenuSelection;
+		gTxInfo->DTMF_DECODING_ENABLE = gSubMenuSelection;
 		gRequestSaveChannel = 1;
 		return;
 
@@ -457,7 +457,7 @@ void MENU_AcceptSetting(void)
 		break;
 
 	case MENU_AM:
-		gTxRadioInfo->AM_CHANNEL_MODE = gSubMenuSelection;
+		gTxInfo->AM_CHANNEL_MODE = gSubMenuSelection;
 		gRequestSaveChannel = 1;
 		return;
 
@@ -576,20 +576,20 @@ void MENU_ShowCurrentSetting(void)
 		break;
 
 	case MENU_STEP:
-		gSubMenuSelection = gTxRadioInfo->STEP_SETTING;
+		gSubMenuSelection = gTxInfo->STEP_SETTING;
 		break;
 
 	case MENU_TXP:
-		gSubMenuSelection = gTxRadioInfo->OUTPUT_POWER;
+		gSubMenuSelection = gTxInfo->OUTPUT_POWER;
 		break;
 
 	case MENU_R_DCS:
-		switch (gTxRadioInfo->DCS[0].CodeType) {
+		switch (gTxInfo->DCS[0].CodeType) {
 		case CODE_TYPE_DIGITAL:
-			gSubMenuSelection = gTxRadioInfo->DCS[0].RX_TX_Code + 1;
+			gSubMenuSelection = gTxInfo->DCS[0].RX_TX_Code + 1;
 			break;
 		case CODE_TYPE_REVERSE_DIGITAL:
-			gSubMenuSelection = gTxRadioInfo->DCS[0].RX_TX_Code + 105;
+			gSubMenuSelection = gTxInfo->DCS[0].RX_TX_Code + 105;
 			break;
 		default:
 			gSubMenuSelection = 0;
@@ -602,20 +602,20 @@ void MENU_ShowCurrentSetting(void)
 		break;
 
 	case MENU_R_CTCS:
-		if (gTxRadioInfo->DCS[0].CodeType == CODE_TYPE_CONTINUOUS_TONE) {
-			gSubMenuSelection = gTxRadioInfo->DCS[0].RX_TX_Code + 1;
+		if (gTxInfo->DCS[0].CodeType == CODE_TYPE_CONTINUOUS_TONE) {
+			gSubMenuSelection = gTxInfo->DCS[0].RX_TX_Code + 1;
 		} else {
 			gSubMenuSelection = 0;
 		}
 		break;
 
 	case MENU_T_DCS:
-		switch (gTxRadioInfo->DCS[1].CodeType) {
+		switch (gTxInfo->DCS[1].CodeType) {
 		case CODE_TYPE_DIGITAL:
-			gSubMenuSelection = gTxRadioInfo->DCS[1].RX_TX_Code + 1;
+			gSubMenuSelection = gTxInfo->DCS[1].RX_TX_Code + 1;
 			break;
 		case CODE_TYPE_REVERSE_DIGITAL:
-			gSubMenuSelection = gTxRadioInfo->DCS[1].RX_TX_Code + 105;
+			gSubMenuSelection = gTxInfo->DCS[1].RX_TX_Code + 105;
 			break;
 		default:
 			gSubMenuSelection = 0;
@@ -624,31 +624,31 @@ void MENU_ShowCurrentSetting(void)
 		break;
 
 	case MENU_T_CTCS:
-		if (gTxRadioInfo->DCS[1].CodeType == CODE_TYPE_CONTINUOUS_TONE) {
-			gSubMenuSelection = gTxRadioInfo->DCS[1].RX_TX_Code + 1;
+		if (gTxInfo->DCS[1].CodeType == CODE_TYPE_CONTINUOUS_TONE) {
+			gSubMenuSelection = gTxInfo->DCS[1].RX_TX_Code + 1;
 		} else {
 			gSubMenuSelection = 0;
 		}
 		break;
 
 	case MENU_SFT_D:
-		gSubMenuSelection = gTxRadioInfo->FREQUENCY_DEVIATION_SETTING;
+		gSubMenuSelection = gTxInfo->FREQUENCY_DEVIATION_SETTING;
 		break;
 
 	case MENU_OFFSET:
-		gSubMenuSelection = gTxRadioInfo->FREQUENCY_OF_DEVIATION;
+		gSubMenuSelection = gTxInfo->FREQUENCY_OF_DEVIATION;
 		break;
 
 	case MENU_W_N:
-		gSubMenuSelection = gTxRadioInfo->CHANNEL_BANDWIDTH;
+		gSubMenuSelection = gTxInfo->CHANNEL_BANDWIDTH;
 		break;
 
 	case MENU_SCR:
-		gSubMenuSelection = gTxRadioInfo->SCRAMBLING_TYPE;
+		gSubMenuSelection = gTxInfo->SCRAMBLING_TYPE;
 		break;
 
 	case MENU_BCL:
-		gSubMenuSelection = gTxRadioInfo->BUSY_CHANNEL_LOCK;
+		gSubMenuSelection = gTxInfo->BUSY_CHANNEL_LOCK;
 		break;
 
 	case MENU_MEM_CH:
@@ -704,11 +704,11 @@ void MENU_ShowCurrentSetting(void)
 		break;
 
 	case MENU_S_ADD1:
-		gSubMenuSelection = gTxRadioInfo->SCANLIST1_PARTICIPATION;
+		gSubMenuSelection = gTxInfo->SCANLIST1_PARTICIPATION;
 		break;
 
 	case MENU_S_ADD2:
-		gSubMenuSelection = gTxRadioInfo->SCANLIST2_PARTICIPATION;
+		gSubMenuSelection = gTxInfo->SCANLIST2_PARTICIPATION;
 		break;
 
 	case MENU_STE:
@@ -760,11 +760,11 @@ void MENU_ShowCurrentSetting(void)
 		break;
 
 	case MENU_PTT_ID:
-		gSubMenuSelection = gTxRadioInfo->DTMF_PTT_ID_TX_MODE;
+		gSubMenuSelection = gTxInfo->DTMF_PTT_ID_TX_MODE;
 		break;
 
 	case MENU_D_DCD:
-		gSubMenuSelection = gTxRadioInfo->DTMF_DECODING_ENABLE;
+		gSubMenuSelection = gTxInfo->DTMF_DECODING_ENABLE;
 		break;
 
 	case MENU_D_LIST:
@@ -780,7 +780,7 @@ void MENU_ShowCurrentSetting(void)
 		break;
 
 	case MENU_AM:
-		gSubMenuSelection = gTxRadioInfo->AM_CHANNEL_MODE;
+		gSubMenuSelection = gTxInfo->AM_CHANNEL_MODE;
 		break;
 
 	case MENU_NOAA_S:
@@ -871,7 +871,7 @@ void MENU_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			NUMBER_Get(gInputBox, &Frequency);
 			Frequency += 75;
 			gAnotherVoiceID = (VOICE_ID_t)Key;
-			gSubMenuSelection = FREQUENCY_FloorToStep(Frequency, gTxRadioInfo->StepFrequency, 0);
+			gSubMenuSelection = FREQUENCY_FloorToStep(Frequency, gTxInfo->StepFrequency, 0);
 			return;
 		}
 		if (gMenuCursor == MENU_MEM_CH || gMenuCursor == MENU_DEL_CH || gMenuCursor == MENU_1_CALL) {
@@ -1011,7 +1011,7 @@ void MENU_Key_STAR(bool bKeyPressed, bool bKeyHeld)
 	if (!bKeyHeld && bKeyPressed) {
 		g_20000396 = 1;
 		RADIO_ConfigureTX();
-		if (IS_NOT_NOAA_CHANNEL(gInfoCHAN_A->CHANNEL_SAVE) && !gInfoCHAN_A->IsAM) {
+		if (IS_NOT_NOAA_CHANNEL(gRxInfo->CHANNEL_SAVE) && !gRxInfo->IsAM) {
 			if (gMenuCursor == MENU_R_CTCS || gMenuCursor == MENU_R_DCS) {
 				if (g_20000381 == 0) {
 					FUN_000074f8(1);
@@ -1047,7 +1047,7 @@ void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 		return;
 	}
 
-	if (g_20000381 != 0) {
+	if (g_20000381) {
 		FUN_000074f8(Direction);
 		g_20000394 = true;
 		gRequestDisplayScreen = DISPLAY_MENU;
@@ -1064,7 +1064,7 @@ void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 	if (gMenuCursor == MENU_OFFSET) {
 		int32_t Offset;
 
-		Offset = (Direction * gTxRadioInfo->StepFrequency) + gSubMenuSelection;
+		Offset = (Direction * gTxInfo->StepFrequency) + gSubMenuSelection;
 		if (Offset < 99999990) {
 			if (Offset < 0) {
 				Offset = 99999990;
@@ -1072,7 +1072,7 @@ void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 		} else {
 			Offset = 0;
 		}
-		gSubMenuSelection = FREQUENCY_FloorToStep(Offset, gTxRadioInfo->StepFrequency, 0);
+		gSubMenuSelection = FREQUENCY_FloorToStep(Offset, gTxInfo->StepFrequency, 0);
 		gRequestDisplayScreen = DISPLAY_MENU;
 		return;
 	}

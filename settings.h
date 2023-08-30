@@ -23,6 +23,7 @@
 
 enum POWER_OnDisplayMode_t {
 	POWER_ON_DISPLAY_MODE_FULL_SCREEN = 0U,
+	POWER_ON_DISPLAY_MODE_MESSAGE     = 1U,
 	POWER_ON_DISPLAY_MODE_VOLTAGE     = 2U,
 };
 
@@ -89,6 +90,14 @@ enum ROGER_Mode_t {
 };
 
 typedef enum ROGER_Mode_t ROGER_Mode_t;
+
+enum CHANNEL_DisplayMode_t {
+	MDF_FREQUENCY = 0U,
+	MDF_CHANNEL   = 1U,
+	MDF_NAME      = 2U,
+};
+
+typedef enum CHANNEL_DisplayMode_t CHANNEL_DisplayMode_t;
 
 typedef struct {
 	uint8_t ScreenChannel[2];
