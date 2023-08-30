@@ -227,10 +227,10 @@ void MENU_AcceptSetting(void)
 		gRequestSaveChannel = 1;
 		return;
 
-	case MENU_T_DCS:
+	case MENU_R_DCS:
 		Sel = 1;
 		// Fallthrough
-	case MENU_R_DCS:
+	case MENU_T_DCS:
 		if (gSubMenuSelection == 0) {
 			if (gTxRadioInfo->DCS[Sel].CodeType != CODE_TYPE_DIGITAL && gTxRadioInfo->DCS[Sel].CodeType != CODE_TYPE_REVERSE_DIGITAL) {
 				gRequestSaveChannel = 1;
@@ -249,10 +249,10 @@ void MENU_AcceptSetting(void)
 		gRequestSaveChannel = 1;
 		return;
 
-	case MENU_T_CTCS:
+	case MENU_R_CTCS:
 		Sel = 1;
 		// Fallthrough
-	case MENU_R_CTCS:
+	case MENU_T_CTCS:
 		if (gSubMenuSelection == 0) {
 			if (gTxRadioInfo->DCS[Sel].CodeType != CODE_TYPE_CONTINUOUS_TONE) {
 				gRequestSaveChannel = 1;
