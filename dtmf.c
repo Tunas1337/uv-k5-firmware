@@ -14,7 +14,6 @@
  *     limitations under the License.
  */
 
-#include <ctype.h>
 #include <string.h>
 #include "driver/eeprom.h"
 #include "dtmf.h"
@@ -27,16 +26,16 @@ bool DTMF_ValidateCodes(char *pCode, uint8_t Size)
 {
 	uint8_t i;
 
-	if (pCode[0] == -1 || pCode[0] == 0) {
+	if (pCode[0] == 0xFF || pCode[0] == 0) {
 		return false;
 	}
 
 	for (i = 0; i < Size; i++) {
-		if (pCode[i] == -1 || pCode[i] == 0) {
+		if (pCode[i] == 0xFF || pCode[i] == 0) {
 			pCode[i] = 0;
 			break;
 		}
-		if (!isdigit((int)pCode[i]) && (pCode[i] < 'A' || pCode[i] > 'D') && pCode[i] != '*' && pCode[i] != '#') {
+		if ((pCode[i] < '0' || pCode[i] > '9') && (pCode[i] < 'A' || pCode[i] > 'D') && pCode[i] != '*' && pCode[i] != '#') {
 			return false;
 		}
 	}
@@ -84,7 +83,7 @@ char DTMF_GetCharacter(uint8_t Code)
 	case 0: case 1: case 2: case 3:
 	case 4: case 5: case 6: case 7:
 	case 8: case 9:
-		return '0' + Code;
+		return '0' + (char)Code;
 	case 10:
 		return 'A';
 	case 11:
@@ -99,7 +98,7 @@ char DTMF_GetCharacter(uint8_t Code)
 		return '#';
 	}
 
-	return -1;
+	return 0xFF;
 }
 
 bool DTMF_CompareMessage(const char *pDTMF, const char *pTemplate, uint8_t Size, bool bFlag)
