@@ -243,7 +243,7 @@ void MENU_AcceptSetting(void)
 			pConfig->CodeType = CODE_TYPE_REVERSE_DIGITAL;
 			Code = gSubMenuSelection - 105;
 		}
-		pConfig->RX_TX_Code = Code;
+		pConfig->Code = Code;
 		gRequestSaveChannel = 1;
 		return;
 
@@ -262,7 +262,7 @@ void MENU_AcceptSetting(void)
 			pConfig->CodeType = CODE_TYPE_CONTINUOUS_TONE;
 			Code = gSubMenuSelection - 1;
 		}
-		pConfig->RX_TX_Code = Code;
+		pConfig->Code = Code;
 		gRequestSaveChannel = 1;
 		return;
 
@@ -584,10 +584,10 @@ void MENU_ShowCurrentSetting(void)
 	case MENU_R_DCS:
 		switch (gTxInfo->ConfigRX.CodeType) {
 		case CODE_TYPE_DIGITAL:
-			gSubMenuSelection = gTxInfo->ConfigRX.RX_TX_Code + 1;
+			gSubMenuSelection = gTxInfo->ConfigRX.Code + 1;
 			break;
 		case CODE_TYPE_REVERSE_DIGITAL:
-			gSubMenuSelection = gTxInfo->ConfigRX.RX_TX_Code + 105;
+			gSubMenuSelection = gTxInfo->ConfigRX.Code + 105;
 			break;
 		default:
 			gSubMenuSelection = 0;
@@ -601,7 +601,7 @@ void MENU_ShowCurrentSetting(void)
 
 	case MENU_R_CTCS:
 		if (gTxInfo->ConfigRX.CodeType == CODE_TYPE_CONTINUOUS_TONE) {
-			gSubMenuSelection = gTxInfo->ConfigRX.RX_TX_Code + 1;
+			gSubMenuSelection = gTxInfo->ConfigRX.Code + 1;
 		} else {
 			gSubMenuSelection = 0;
 		}
@@ -610,10 +610,10 @@ void MENU_ShowCurrentSetting(void)
 	case MENU_T_DCS:
 		switch (gTxInfo->ConfigTX.CodeType) {
 		case CODE_TYPE_DIGITAL:
-			gSubMenuSelection = gTxInfo->ConfigTX.RX_TX_Code + 1;
+			gSubMenuSelection = gTxInfo->ConfigTX.Code + 1;
 			break;
 		case CODE_TYPE_REVERSE_DIGITAL:
-			gSubMenuSelection = gTxInfo->ConfigTX.RX_TX_Code + 105;
+			gSubMenuSelection = gTxInfo->ConfigTX.Code + 105;
 			break;
 		default:
 			gSubMenuSelection = 0;
@@ -623,7 +623,7 @@ void MENU_ShowCurrentSetting(void)
 
 	case MENU_T_CTCS:
 		if (gTxInfo->ConfigTX.CodeType == CODE_TYPE_CONTINUOUS_TONE) {
-			gSubMenuSelection = gTxInfo->ConfigTX.RX_TX_Code + 1;
+			gSubMenuSelection = gTxInfo->ConfigTX.Code + 1;
 		} else {
 			gSubMenuSelection = 0;
 		}
@@ -1014,7 +1014,7 @@ void MENU_Key_STAR(bool bKeyPressed, bool bKeyHeld)
 				if (g_20000381 == 0) {
 					FUN_000074f8(1);
 					gRequestDisplayScreen = DISPLAY_MENU;
-					AUDIO_SetVoiceID(0,VOICE_ID_SCANNING_BEGIN);
+					AUDIO_SetVoiceID(0, VOICE_ID_SCANNING_BEGIN);
 					AUDIO_PlaySingleVoice(1);
 				} else {
 					RADIO_Whatever();

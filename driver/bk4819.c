@@ -317,7 +317,7 @@ void BK4819_SetupPowerAmplifier(uint16_t Bias, uint32_t Frequency)
 
 void BK4819_SetFrequency(uint32_t Frequency)
 {
-	BK4819_WriteRegister(BK4819_REG_38,  (Frequency >>  0) & 0xFFFF);
+	BK4819_WriteRegister(BK4819_REG_38, (Frequency >>  0) & 0xFFFF);
 	BK4819_WriteRegister(BK4819_REG_39, (Frequency >> 16) & 0xFFFF);
 }
 
@@ -843,7 +843,7 @@ void BK4819_SendFSKData(uint16_t *pData)
 
 	SYSTEM_DelayMs(20);
 
-	BK4819_WriteRegister(BK4819_REG_59,0x2868);
+	BK4819_WriteRegister(BK4819_REG_59, 0x2868);
 
 	while (Timeout) {
 		if (BK4819_GetRegister(BK4819_REG_0C) & 1U) {

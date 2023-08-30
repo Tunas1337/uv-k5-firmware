@@ -107,7 +107,7 @@ void APP_CheckDTMFStuff(void)
 		return;
 	}
 
-	if (8 < gDTMF_WriteIndex) {
+	if (gDTMF_WriteIndex >= 9) {
 		Offset = gDTMF_WriteIndex - 9;
 		sprintf(DTMFString, "%s%c%s", gEeprom.ANI_DTMF_ID, gEeprom.DTMF_SEPARATE_CODE, gEeprom.KILL_CODE);
 		if (DTMF_CompareMessage(gDTMF_Received + Offset, DTMFString, 9, true)) {
@@ -122,32 +122,28 @@ void APP_CheckDTMFStuff(void)
 			} else {
 				g_200003BE = 0;
 			}
-			g_200003BC = 0;
-			gUpdateDisplay = true;
-			gUpdateStatus = true;
-			return;
 		} else {
 			sprintf(DTMFString, "%s%c%s", gEeprom.ANI_DTMF_ID, gEeprom.DTMF_SEPARATE_CODE, gEeprom.REVIVE_CODE);
 			if (DTMF_CompareMessage(gDTMF_Received + Offset, DTMFString, 9, true)) {
 				gSetting_KILLED = false;
 				SETTINGS_SaveSettings();
 				g_200003BE = 2;
-				g_200003BC = 0;
-				gUpdateDisplay = true;
-				gUpdateStatus = true;
-				return;
 			}
 		}
+		g_200003BC = 0;
+		gUpdateDisplay = true;
+		gUpdateStatus = true;
+		return;
 	}
 
-	if (1 < gDTMF_WriteIndex) {
+	if (gDTMF_WriteIndex >= 2) {
 		if (DTMF_CompareMessage(gDTMF_Received + gDTMF_WriteIndex - 2, "AB", 2, true)) {
 			g_CalloutAndDTMF_State = 1;
 			gUpdateDisplay = true;
 			return;
 		}
 	}
-	if (g_200003BC == 1 && g_20000438 == 0 && 8 < gDTMF_WriteIndex) {
+	if (g_200003BC == 1 && g_20000438 == 0 && gDTMF_WriteIndex >= 9) {
 		Offset = gDTMF_WriteIndex - 9;
 		sprintf(DTMFString, "%s%c%s", gDTMF_String, gEeprom.DTMF_SEPARATE_CODE, "AAAAA");
 		if (DTMF_CompareMessage(gDTMF_Received + Offset, DTMFString, 9, false)) {
@@ -738,6 +734,8 @@ static void FUN_00008334(void)
 				}
 				if (gCurrentFunction == FUNCTION_TRANSMIT && !gPttIsPressed && g_200003B4 == 0) {
 					if (g_200003FD == 1) {
+						FUNCTION_Select(FUNCTION_0);
+					} else {
 						TalkRelatedCode();
 						if (gEeprom.REPEATER_TAIL_TONE_ELIMINATION == 0) {
 							FUNCTION_Select(FUNCTION_0);
@@ -779,7 +777,7 @@ void APP_Update(void)
 		RADIO_SomethingElse(4);
 		GUI_DisplayScreen();
 	}
-	if (g_2000037E == 1) {
+	if (gReducedService) {
 		return;
 	}
 	if (gCurrentFunction != FUNCTION_TRANSMIT) {
@@ -797,10 +795,10 @@ void APP_Update(void)
 				APP_MoreRadioStuff();
 			}
 		} else {
-			if (gCopyOfCodeType != CODE_TYPE_OFF || gCurrentFunction != FUNCTION_3) {
-				FUN_00007dd4();
-			} else {
+			if (gCopyOfCodeType == CODE_TYPE_OFF && gCurrentFunction == FUNCTION_3) {
 				APP_StartListening(FUNCTION_RECEIVE);
+			} else {
+				FUN_00007dd4();
 			}
 		}
 		gScanPauseMode = 0;
@@ -968,7 +966,7 @@ void APP_TimeSlice10ms(void)
 		enableIRQinterrupts();
 	}
 #endif
-	if (g_2000037E == 1) {
+	if (gReducedService) {
 		return;
 	}
 
@@ -1175,7 +1173,7 @@ void APP_TimeSlice500ms(void)
 		gFmRadioCountdown--;
 		return;
 	}
-	if (g_2000037E == 1) {
+	if (gReducedService) {
 		BOARD_ADC_GetBatteryInfo(&gBatteryCurrentVoltage, &gBatteryCurrent);
 		if ((gBatteryCurrent < 0x1f5) && (gBatteryCurrentVoltage <= gBatteryCalibration[3])) {
 			return;
@@ -1261,21 +1259,21 @@ LAB_00004b08:
 	}
 
 	if (gLowBattery) {
-		gLowBatteryBlink = ++g_20000400 & 1;
-		UI_DisplayBattery(g_20000400);
+		gLowBatteryBlink = ++gLowBatteryCountdown & 1;
+		UI_DisplayBattery(gLowBatteryCountdown);
 		if (gCurrentFunction != FUNCTION_TRANSMIT) {
-			if (g_20000400 < 30) {
-				if (g_20000400 == 29 && !gChargingWithTypeC) {
+			if (gLowBatteryCountdown < 30) {
+				if (gLowBatteryCountdown == 29 && !gChargingWithTypeC) {
 					AUDIO_PlayBeep(BEEP_500HZ_60MS_DOUBLE_BEEP);
 				}
 			} else {
-				g_20000400 = 0;
+				gLowBatteryCountdown = 0;
 				if (!gChargingWithTypeC) {
 					AUDIO_PlayBeep(BEEP_500HZ_60MS_DOUBLE_BEEP);
 					AUDIO_SetVoiceID(0, VOICE_ID_LOW_VOLTAGE);
 					if (gBatteryDisplayLevel == 0) {
 						AUDIO_PlaySingleVoice(true);
-						g_2000037E = 1;
+						gReducedService = true;
 						FUNCTION_Select(FUNCTION_POWER_SAVE);
 						ST7565_Configure_GPIO_B11();
 						GPIO_ClearBit(&GPIOB->DATA, GPIOB_PIN_BACKLIGHT);
@@ -1819,13 +1817,13 @@ static void APP_ProcessKey_AIRCOPY(KEY_Code_t Key, bool bKeyPressed, bool bKeyHe
 	case KEY_0: case KEY_1: case KEY_2: case KEY_3:
 	case KEY_4: case KEY_5: case KEY_6: case KEY_7:
 	case KEY_8: case KEY_9:
-		//AIRCOPY_Key_DIGITS(Key, bKeyPressed, bKeyHeld);
+		AIRCOPY_Key_DIGITS(Key, bKeyPressed, bKeyHeld);
 		break;
 	case KEY_MENU:
-		//AIRCOPY_Key_MENU(bKeyPressed, bKeyHeld);
+		AIRCOPY_Key_MENU(bKeyPressed, bKeyHeld);
 		break;
 	case KEY_EXIT:
-		//AIRCOPY_Key_EXIT(bKeyPressed, bKeyHeld);
+		AIRCOPY_Key_EXIT(bKeyPressed, bKeyHeld);
 		break;
 	default:
 		break;
