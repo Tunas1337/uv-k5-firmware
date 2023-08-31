@@ -627,8 +627,8 @@ void RADIO_ConfigureNOAA(void)
 		if (gRxInfo->CHANNEL_SAVE >= NOAA_CHANNEL_FIRST) {
 			gIsNoaaMode = true;
 			gNoaaChannel = gRxInfo->CHANNEL_SAVE - NOAA_CHANNEL_FIRST;
-			g_20000356 = 50;
-			gSystickFlag8 = false;
+			gNOAA_Countdown = 50;
+			gScheduleNOAA = false;
 		} else {
 			gIsNoaaMode = false;
 		}
@@ -745,8 +745,7 @@ LAB_00007c20:
 				g_200003BD = 1;
 				g_200003BC = 0;
 				g_200003C3 = 6;
-			}
-			else {
+			} else {
 				g_200003BC = 1;
 				g_200003BD = 0;
 			}

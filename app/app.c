@@ -17,6 +17,7 @@
 #include <string.h>
 #include "app/aircopy.h"
 #include "app/app.h"
+#include "app/dtmf.h"
 #include "app/fm.h"
 #include "app/generic.h"
 #include "app/main.h"
@@ -64,8 +65,8 @@ static void FUN_00005144(void)
 		}
 		if (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF) {
 			if (gIsNoaaMode) {
-				g_20000356 = 20;
-				gSystickFlag8 = false;
+				gNOAA_Countdown = 20;
+				gScheduleNOAA = false;
 			}
 			FUNCTION_Select(FUNCTION_3);
 			return;
@@ -86,113 +87,6 @@ static void FUN_00005144(void)
 	}
 	g_20000411 = 1;
 	FUNCTION_Select(FUNCTION_3);
-}
-
-void APP_CheckDTMFStuff(void)
-{
-	char DTMFString[20];
-	uint8_t Offset;
-
-	if (!g_200003AA) {
-		return;
-	}
-
-	g_200003AA = 0;
-
-	if (gStepDirection || g_20000381) {
-		return;
-	}
-
-	if (!gRxInfo->DTMF_DECODING_ENABLE && !gSetting_KILLED) {
-		return;
-	}
-
-	if (gDTMF_WriteIndex >= 9) {
-		Offset = gDTMF_WriteIndex - 9;
-		sprintf(DTMFString, "%s%c%s", gEeprom.ANI_DTMF_ID, gEeprom.DTMF_SEPARATE_CODE, gEeprom.KILL_CODE);
-		if (DTMF_CompareMessage(gDTMF_Received + Offset, DTMFString, 9, true)) {
-			if (gEeprom.PERMIT_REMOTE_KILL) {
-				gSetting_KILLED = true;
-				SETTINGS_SaveSettings();
-				g_200003BE = 2;
-				if (gFmRadioMode) {
-					FM_TurnOff();
-					GUI_SelectNextDisplay(DISPLAY_MAIN);
-				}
-			} else {
-				g_200003BE = 0;
-			}
-		} else {
-			sprintf(DTMFString, "%s%c%s", gEeprom.ANI_DTMF_ID, gEeprom.DTMF_SEPARATE_CODE, gEeprom.REVIVE_CODE);
-			if (DTMF_CompareMessage(gDTMF_Received + Offset, DTMFString, 9, true)) {
-				gSetting_KILLED = false;
-				SETTINGS_SaveSettings();
-				g_200003BE = 2;
-			}
-		}
-		g_200003BC = 0;
-		gUpdateDisplay = true;
-		gUpdateStatus = true;
-		return;
-	}
-
-	if (gDTMF_WriteIndex >= 2) {
-		if (DTMF_CompareMessage(gDTMF_Received + gDTMF_WriteIndex - 2, "AB", 2, true)) {
-			g_CalloutAndDTMF_State = 1;
-			gUpdateDisplay = true;
-			return;
-		}
-	}
-	if (g_200003BC == 1 && g_20000438 == 0 && gDTMF_WriteIndex >= 9) {
-		Offset = gDTMF_WriteIndex - 9;
-		sprintf(DTMFString, "%s%c%s", gDTMF_String, gEeprom.DTMF_SEPARATE_CODE, "AAAAA");
-		if (DTMF_CompareMessage(gDTMF_Received + Offset, DTMFString, 9, false)) {
-			g_CalloutAndDTMF_State = 2;
-			gUpdateDisplay = true;
-		}
-	}
-	if (gSetting_KILLED) {
-		return;
-	}
-	if (g_200003BC) {
-		return;
-	}
-	if (gDTMF_WriteIndex < 7) {
-		return;
-	}
-	Offset = gDTMF_WriteIndex - 7;
-	sprintf(DTMFString, "%s%c", gEeprom.ANI_DTMF_ID, gEeprom.DTMF_SEPARATE_CODE);
-	g_20000439 = false;
-	if (!DTMF_CompareMessage(gDTMF_Received + Offset, DTMFString, 4, true)) {
-		return;
-	}
-	g_200003BC = 2;
-	memcpy(gDTMF_Contact1, gDTMF_Received + Offset, 3);
-	memcpy(gDTMF_Contact0, gDTMF_Received + Offset + 4, 3);
-
-	gUpdateDisplay = true;
-
-	switch (gEeprom.DTMF_DECODE_RESPONSE) {
-	case 3:
-		gDTMF_DecodeRing = true;
-		gDTMF_DecodeRingCountdown = 20;
-		// Fallthrough
-	case 2:
-		g_200003BE = 3;
-		break;
-	case 1:
-		gDTMF_DecodeRing = true;
-		gDTMF_DecodeRingCountdown = 20;
-		break;
-	default:
-		gDTMF_DecodeRing = false;
-		g_200003BE = 0;
-		break;
-	}
-
-	if (g_20000439) {
-		g_200003BE = 0;
-	}
 }
 
 void FUN_000051e8(void)
@@ -221,7 +115,9 @@ void FUN_000051e8(void)
 			return;
 		}
 	}
-	APP_CheckDTMFStuff();
+
+	DTMF_HandleRequest();
+
 	if (gStepDirection == 0 && g_20000381 == 0) {
 		if (gRxInfo->DTMF_DECODING_ENABLE || gSetting_KILLED) {
 			if (g_200003BC == 0) {
@@ -234,6 +130,7 @@ void FUN_000051e8(void)
 			}
 		}
 	}
+
 	APP_StartListening(FUNCTION_RECEIVE);
 }
 
@@ -435,8 +332,8 @@ void APP_StartListening(FUNCTION_Type_t Function)
 			gRxInfo->pCurrent->Frequency = NoaaFrequencyTable[gNoaaChannel];
 			gRxInfo->pReverse->Frequency = NoaaFrequencyTable[gNoaaChannel];
 			gEeprom.ScreenChannel[gEeprom.RX_CHANNEL] = gRxInfo->CHANNEL_SAVE;
-			g_20000356 = 500;
-			gSystickFlag8 = false;
+			gNOAA_Countdown = 500;
+			gScheduleNOAA = false;
 		}
 		if (g_20000381) {
 			g_20000381 = 2;
@@ -640,9 +537,9 @@ void APP_CheckRadioInterrupts(void)
 		BK4819_WriteRegister(BK4819_REG_02, 0);
 		Mask = BK4819_GetRegister(BK4819_REG_02);
 		if (Mask & BK4819_REG_02_DTMF_5TONE_FOUND) {
-			g_200003AA = 1;
+			gDTMF_RequestPending = true;
 			g_20000442 = 5;
-			if (15 < gDTMF_WriteIndex) {
+			if (gDTMF_WriteIndex > 15) {
 				uint8_t i;
 				for (i = 0; i < sizeof(gDTMF_Received) - 1; i++) {
 					gDTMF_Received[i] = gDTMF_Received[i + 1];
@@ -651,7 +548,7 @@ void APP_CheckRadioInterrupts(void)
 			}
 			gDTMF_Received[gDTMF_WriteIndex++] = DTMF_GetCharacter(BK4819_GetDTMF_5TONE_Code());
 			if (gCurrentFunction == FUNCTION_RECEIVE) {
-				APP_CheckDTMFStuff();
+				DTMF_HandleRequest();
 			}
 		}
 		if (Mask & BK4819_REG_02_CxCSS_TAIL) {
@@ -811,11 +708,11 @@ void APP_Update(void)
 		gSystickFlag9 = false;
 	}
 
-	if (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gIsNoaaMode && gSystickFlag8 && gVoiceWriteIndex == 0) {
+	if (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gIsNoaaMode && gScheduleNOAA && gVoiceWriteIndex == 0) {
 		NOAA_IncreaseChannel();
 		RADIO_SetupRegisters(false);
-		gSystickFlag8 = false;
-		g_20000356 = 7;
+		gScheduleNOAA = false;
+		gNOAA_Countdown = 7;
 	}
 
 	if (gScreenToDisplay != DISPLAY_SCANNER && gEeprom.DUAL_WATCH != DUAL_WATCH_OFF) {
@@ -1211,7 +1108,7 @@ void APP_TimeSlice500ms(void)
 				}
 			}
 			if (gScreenToDisplay != DISPLAY_AIRCOPY && (gScreenToDisplay != DISPLAY_SCANNER || (1 < gScanState))) {
-				if (gEeprom.AUTO_KEYPAD_LOCK && gKeyLockCountdown && g_200003BA == 0) {
+				if (gEeprom.AUTO_KEYPAD_LOCK && gKeyLockCountdown && !gDTMF_InputMode) {
 					gKeyLockCountdown--;
 					if (gKeyLockCountdown == 0) {
 						gEeprom.KEY_LOCK = true;
@@ -1221,7 +1118,7 @@ void APP_TimeSlice500ms(void)
 				if (g_20000393) {
 					g_20000393--;
 					if (g_20000393 == 0) {
-						if (gInputBoxIndex || g_200003BA == 1 || gScreenToDisplay == DISPLAY_MENU) {
+						if (gInputBoxIndex || gDTMF_InputMode || gScreenToDisplay == DISPLAY_MENU) {
 							AUDIO_PlayBeep(BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL);
 						}
 						if (gScreenToDisplay == DISPLAY_SCANNER) {
@@ -1233,8 +1130,8 @@ void APP_TimeSlice500ms(void)
 						gWasFKeyPressed = false;
 						gUpdateStatus = true;
 						gInputBoxIndex = 0;
-						g_200003BA = 0;
-						g_200003BB = 0;
+						gDTMF_InputMode = false;
+						gDTMF_InputIndex = 0;
 						gAskToSave = false;
 						gAskToDelete = false;
 						if (gFmRadioMode && gCurrentFunction != FUNCTION_RECEIVE && gCurrentFunction != FUNCTION_MONITOR && gCurrentFunction != FUNCTION_TRANSMIT) {
@@ -1350,17 +1247,6 @@ void FUN_00001150(void)
 	gRequestDisplayScreen = DISPLAY_MAIN;
 }
 
-void XXX_Append(uint8_t Data)
-{
-	if (g_200003BB == 0) {
-		memset(g_20000D1C, '-', sizeof(g_20000D1C));
-		g_20000D1C[14] = 0;
-	} else if (g_200003BB >= sizeof(g_20000D1C)) {
-		return;
-	}
-	g_20000D1C[g_200003BB++] = Data;
-}
-
 void FUN_000075b0(void)
 {
 	uint8_t StepSetting;
@@ -1398,7 +1284,7 @@ void FUN_000075b0(void)
 	g_CxCSS_Type = 0xFF;
 	g_2000045F = 0;
 	g_2000045C = 0;
-	g_200003AA = 0;
+	gDTMF_RequestPending = false;
 	g_CxCSS_TAIL_Found = false;
 	g_CDCSS_Lost = false;
 	gCDCSSCodeType = 0;
@@ -1513,8 +1399,8 @@ void FUN_00005770(void)
 		gScanPauseMode = 1;
 	}
 	if (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gIsNoaaMode) {
-		g_20000356 = 500;
-		gSystickFlag8 = false;
+		gNOAA_Countdown = 500;
+		gScheduleNOAA = false;
 	}
 	RADIO_SetupRegisters(true);
 	if (gFmRadioMode) {
@@ -1578,13 +1464,13 @@ void FUN_00004404(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 	uint8_t Short;
 	uint8_t Long;
 
-	if (gScreenToDisplay == DISPLAY_MAIN && g_200003BA) {
+	if (gScreenToDisplay == DISPLAY_MAIN && gDTMF_InputMode) {
 		if (Key == KEY_SIDE1 && !bKeyHeld && bKeyPressed) {
 			gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
-			if (g_200003BB) {
-				g_200003BB--;
-				g_20000D1C[g_200003BB] = 0x2d;
-				if (g_200003BB) {
+			if (gDTMF_InputIndex) {
+				gDTMF_InputIndex--;
+				gDTMF_InputBox[gDTMF_InputIndex] = '-';
+				if (gDTMF_InputIndex) {
 					g_20000394 = true;
 					gRequestDisplayScreen = DISPLAY_MAIN;
 					return;
@@ -1592,7 +1478,7 @@ void FUN_00004404(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			}
 			gAnotherVoiceID = VOICE_ID_CANCEL;
 			gRequestDisplayScreen = DISPLAY_MAIN;
-			g_200003BA = 0;
+			gDTMF_InputMode = false;
 		}
 		g_20000394 = true;
 		return;
@@ -1654,11 +1540,11 @@ static void APP_ProcessKey_MAIN(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		}
 		return;
 	}
-	if (g_200003BA && !bKeyHeld && bKeyPressed) {
+	if (gDTMF_InputMode && !bKeyHeld && bKeyPressed) {
 		char Character = DTMF_GetCharacter(Key);
 		if (Character != 0xFF) {
 			g_20000396 = 1;
-			XXX_Append(Character);
+			DTMF_Append(Character);
 			gRequestDisplayScreen = DISPLAY_MAIN;
 			g_20000394 = true;
 			return;
