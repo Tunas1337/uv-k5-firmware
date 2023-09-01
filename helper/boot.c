@@ -60,7 +60,7 @@ void BOOT_ProcessMode(BOOT_Mode_t Mode)
 		gMenuCursor = MENU_350TX;
 		gSubMenuSelection = gSetting_350TX;
 		GUI_SelectNextDisplay(DISPLAY_MENU);
-		gMenuListCount = 57;
+		gMenuListCount = 58;
 		gF_LOCK = true;
 	} else if (Mode == BOOT_MODE_AIRCOPY) {
 		gEeprom.DUAL_WATCH = DUAL_WATCH_OFF;

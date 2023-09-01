@@ -89,6 +89,7 @@ static const VOICE_ID_t MenuVoices[] = {
 	VOICE_ID_INVALID,
 	VOICE_ID_INVALID,
 	VOICE_ID_INVALID,
+	VOICE_ID_INVALID,
 };
 
 static void FUN_000074f8(int8_t Direction)
@@ -144,7 +145,7 @@ int MENU_GetLimits(uint8_t Cursor, uint8_t *pMin, uint8_t *pMax)
 	case MENU_AM: case MENU_NOAA_S:
 	case MENU_RESET: case MENU_350TX:
 	case MENU_200TX: case MENU_500TX:
-	case MENU_350EN: case MENU_SCREN:
+	case MENU_350EN: case MENU_SCREN: case MENU_ALLTX:
 		*pMin = 0;
 		*pMax = 1;
 		break;
@@ -504,6 +505,10 @@ void MENU_AcceptSetting(void)
 		gRequestSaveSettings = true;
 		g_20000398 = 1;
 		return;
+	
+	case MENU_ALLTX:
+		gSetting_AllTX = gSubMenuSelection;
+		break;
 
 	default:
 		return;
@@ -812,6 +817,10 @@ void MENU_ShowCurrentSetting(void)
 
 	case MENU_SCREN:
 		gSubMenuSelection = gSetting_ScrambleEnable;
+		break;
+	
+	case MENU_ALLTX:
+		gSubMenuSelection = gSetting_AllTX;
 		break;
 	}
 }

@@ -51,7 +51,7 @@ static const char MenuList[][7] = {
 	"NOAA_S", "DEL-CH",  "RESET",  "350TX",
 	"F-LOCK", "200TX",   "500TX",  "350EN",
 	// 0x38
-	"SCREN",
+	"SCREN", "ALLTX"
 };
 
 static const uint16_t gSubMenu_Step[] = {
@@ -308,6 +308,7 @@ void UI_DisplayMenu(void)
 	case MENU_500TX:
 	case MENU_350EN:
 	case MENU_SCREN:
+	case MENU_ALLTX:
 		strcpy(String, gSubMenu_OFF_ON[gSubMenuSelection]);
 		break;
 
