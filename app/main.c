@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include "app/fm.h"
+#include "app/generic.h"
 #include "app/main.h"
 #include "audio.h"
 #include "dtmf.h"
@@ -26,7 +27,6 @@
 #include "ui/inputbox.h"
 #include "ui/ui.h"
 
-extern void APP_SwitchToFM(void);
 extern void FUN_0000773c(void);
 extern void APP_SetFrequencyByStep(VFO_Info_t *pInfo, int8_t Step);
 extern void APP_ChangeStepDirectionMaybe(bool bFlag, int8_t Direction);
@@ -34,7 +34,7 @@ extern void APP_CycleOutputPower(void);
 extern void APP_FlipVoxSwitch(void);
 extern void APP_StartScan(bool bFlag);
 
-void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
+static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
 	uint8_t Vfo;
 	uint8_t Band;
@@ -135,7 +135,7 @@ void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 	gUpdateStatus = true;
 	switch (Key) {
 	case KEY_0:
-		APP_SwitchToFM();
+		FM_Switch();
 		break;
 
 	case KEY_1:
@@ -261,7 +261,7 @@ void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 	}
 }
 
-void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
+static void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 {
 	if (!bKeyHeld && bKeyPressed) {
 		gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
@@ -282,11 +282,11 @@ void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 			gRequestDisplayScreen = DISPLAY_MAIN;
 			return;
 		}
-		APP_SwitchToFM();
+		FM_Switch();
 	}
 }
 
-void MAIN_Key_MENU(bool bKeyPressed, bool bKeyHeld)
+static void MAIN_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 {
 	if (!bKeyHeld && bKeyPressed) {
 		bool bFlag;
@@ -304,7 +304,7 @@ void MAIN_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 	}
 }
 
-void MAIN_Key_STAR(bool bKeyPressed, bool bKeyHeld)
+static void MAIN_Key_STAR(bool bKeyPressed, bool bKeyHeld)
 {
 	if (gInputBoxIndex) {
 		if (!bKeyHeld && bKeyPressed) {
@@ -350,7 +350,7 @@ void MAIN_Key_STAR(bool bKeyPressed, bool bKeyHeld)
 	}
 }
 
-void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
+static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 {
 	uint8_t Channel;
 
@@ -411,5 +411,64 @@ void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 	}
 	APP_ChangeStepDirectionMaybe(false, Direction);
 	g_20000394 = true;
+}
+
+void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
+{
+	if (gFmRadioMode && Key != KEY_PTT && Key != KEY_EXIT) {
+		if (!bKeyHeld && bKeyPressed) {
+			gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+		}
+		return;
+	}
+	if (gDTMF_InputMode && !bKeyHeld && bKeyPressed) {
+		char Character = DTMF_GetCharacter(Key);
+		if (Character != 0xFF) {
+			gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
+			DTMF_Append(Character);
+			gRequestDisplayScreen = DISPLAY_MAIN;
+			g_20000394 = true;
+			return;
+		}
+	}
+
+	// TODO: ???
+	if (KEY_PTT < Key) {
+		Key = KEY_SIDE2;
+	}
+
+	switch (Key) {
+	case KEY_0: case KEY_1: case KEY_2: case KEY_3:
+	case KEY_4: case KEY_5: case KEY_6: case KEY_7:
+	case KEY_8: case KEY_9:
+		MAIN_Key_DIGITS(Key, bKeyPressed, bKeyHeld);
+		break;
+	case KEY_MENU:
+		MAIN_Key_MENU(bKeyPressed, bKeyHeld);
+		break;
+	case KEY_UP:
+		MAIN_Key_UP_DOWN(bKeyPressed, bKeyHeld, 1);
+		break;
+	case KEY_DOWN:
+		MAIN_Key_UP_DOWN(bKeyPressed, bKeyHeld, -1);
+		break;
+	case KEY_EXIT:
+		MAIN_Key_EXIT(bKeyPressed, bKeyHeld);
+		break;
+	case KEY_STAR:
+		MAIN_Key_STAR(bKeyPressed, bKeyHeld);
+		break;
+	case KEY_F:
+		GENERIC_Key_F(bKeyPressed, bKeyHeld);
+		break;
+	case KEY_PTT:
+		GENERIC_Key_PTT(bKeyPressed);
+		break;
+	default:
+		if (!bKeyHeld && bKeyPressed) {
+			gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
+		}
+		break;
+	}
 }
 

@@ -68,7 +68,7 @@ void UI_DisplayMain(void)
 				char Contact[16];
 
 				if (!gDTMF_InputMode) {
-					if (gDTMF_CallState == DTMF_CALL_STATE_1) {
+					if (gDTMF_CallState == DTMF_CALL_STATE_CALL_OUT) {
 						if (gDTMF_State == DTMF_STATE_CALL_OUT_RSP) {
 							strcpy(String, "CALL OUT(RSP)");
 						} else {
@@ -96,7 +96,7 @@ void UI_DisplayMain(void)
 				memset(Contact, 0, sizeof(Contact));
 
 				if (!gDTMF_InputMode) {
-					if (gDTMF_CallState == DTMF_CALL_STATE_1) {
+					if (gDTMF_CallState == DTMF_CALL_STATE_CALL_OUT) {
 						if (DTMF_FindContact(gDTMF_String, Contact)) {
 							sprintf(String, ">%s", Contact);
 						} else {
@@ -132,8 +132,9 @@ void UI_DisplayMain(void)
 			if (g_20000383 == 2) {
 				SomeValue = 2;
 			} else {
-				Channel = gEeprom.RX_CHANNEL;
-				if (gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF) {
+				if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
+					Channel = gEeprom.RX_CHANNEL;
+				} else {
 					Channel = gEeprom.TX_CHANNEL;
 				}
 				if (Channel == i) {

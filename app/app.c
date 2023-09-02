@@ -480,53 +480,6 @@ void FUN_00007f4c(void)
 	}
 }
 
-void APP_PlayFM(void)
-{
-	if (!FM_CheckFrequencyLock(gEeprom.FM_FrequencyPlaying, gEeprom.FM_LowerLimit)) {
-		if (!gFM_AutoScan) {
-			gFmPlayCountdown = 0;
-			g_20000427 = 1;
-			if (!gEeprom.FM_IsMrMode) {
-				gEeprom.FM_SelectedFrequency = gEeprom.FM_FrequencyPlaying;
-			}
-			GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
-			gEnableSpeaker = true;
-		} else {
-			if (gFM_ChannelPosition < 20) {
-				gFM_Channels[gFM_ChannelPosition++] = gEeprom.FM_FrequencyPlaying;
-				if (gEeprom.FM_UpperLimit > gEeprom.FM_FrequencyPlaying) {
-					FM_Tune(gEeprom.FM_FrequencyPlaying, gFM_Step, false);
-				} else {
-					FM_Play();
-				}
-			} else {
-				FM_Play();
-			}
-		}
-	} else if (gFM_AutoScan) {
-		if (gEeprom.FM_UpperLimit > gEeprom.FM_FrequencyPlaying) {
-			FM_Tune(gEeprom.FM_FrequencyPlaying, gFM_Step, false);
-		} else {
-			FM_Play();
-		}
-	} else {
-		FM_Tune(gEeprom.FM_FrequencyPlaying, gFM_Step, false);
-	}
-
-	GUI_SelectNextDisplay(DISPLAY_FM);
-}
-
-void APP_StartFM(void)
-{
-	gFmRadioMode = true;
-	gFM_Step = 0;
-	g_2000038E = 0;
-	BK1080_Init(gEeprom.FM_FrequencyPlaying, true);
-	GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
-	gEnableSpeaker = true;
-	gUpdateStatus = true;
-}
-
 void APP_CheckRadioInterrupts(void)
 {
 	if (gScreenToDisplay == DISPLAY_SCANNER) {
@@ -735,7 +688,7 @@ void APP_Update(void)
 	}
 
 	if (gFM_Step && gScheduleFM && gCurrentFunction != FUNCTION_MONITOR && gCurrentFunction != FUNCTION_RECEIVE && gCurrentFunction != FUNCTION_TRANSMIT) {
-		APP_PlayFM();
+		FM_Play();
 		gScheduleFM = false;
 	}
 
@@ -948,7 +901,7 @@ void APP_TimeSlice10ms(void)
 	if (gFmRadioMode && g_2000038E) {
 		g_2000038E--;
 		if (g_2000038E == 0) {
-			APP_StartFM();
+			FM_Start();
 			GUI_SelectNextDisplay(DISPLAY_FM);
 		}
 	}
@@ -1153,7 +1106,7 @@ LAB_00004b08:
 		if (g_20000373 == 0) {
 			RADIO_SomethingElse(0);
 			if (gCurrentFunction != FUNCTION_RECEIVE && gCurrentFunction != FUNCTION_TRANSMIT && gCurrentFunction != FUNCTION_MONITOR && gFmRadioMode) {
-				APP_StartFM();
+				FM_Start();
 				GUI_SelectNextDisplay(DISPLAY_FM);
 			}
 		}
@@ -1349,7 +1302,7 @@ void APP_StartScan(bool bFlag)
 
 			GUI_SelectNextDisplay(DISPLAY_FM);
 			if (gFM_Step) {
-				FM_Play();
+				FM_PlayAndUpdate();
 				gAnotherVoiceID = VOICE_ID_SCANNING_STOP;
 				return;
 			}
@@ -1406,29 +1359,10 @@ void FUN_00005770(void)
 	}
 	RADIO_SetupRegisters(true);
 	if (gFmRadioMode) {
-		APP_StartFM();
+		FM_Start();
 		gRequestDisplayScreen = DISPLAY_FM;
 	} else {
 		gRequestDisplayScreen = gScreenToDisplay;
-	}
-}
-
-void APP_SwitchToFM(void)
-{
-	if (gCurrentFunction != FUNCTION_TRANSMIT && gCurrentFunction != FUNCTION_MONITOR) {
-		if (gFmRadioMode) {
-			FM_TurnOff();
-			gInputBoxIndex = 0;
-			g_200003B6 = 0x50;
-			g_20000398 = 1;
-			gRequestDisplayScreen = DISPLAY_MAIN;
-			return;
-		}
-		RADIO_ConfigureTX();
-		RADIO_SetupRegisters(true);
-		APP_StartFM();
-		gInputBoxIndex = 0;
-		gRequestDisplayScreen = DISPLAY_FM;
 	}
 }
 
@@ -1526,196 +1460,10 @@ void FUN_00004404(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		FUN_000056a0(0);
 		break;
 	case 7:
-		APP_SwitchToFM();
+		FM_Switch();
 		break;
 	case 8:
 		FUN_000056a0(1);
-		break;
-	}
-}
-
-static void APP_ProcessKey_MAIN(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
-{
-	if (gFmRadioMode && Key != KEY_PTT && Key != KEY_EXIT) {
-		if (!bKeyHeld && bKeyPressed) {
-			g_20000396 = 2;
-		}
-		return;
-	}
-	if (gDTMF_InputMode && !bKeyHeld && bKeyPressed) {
-		char Character = DTMF_GetCharacter(Key);
-		if (Character != 0xFF) {
-			g_20000396 = 1;
-			DTMF_Append(Character);
-			gRequestDisplayScreen = DISPLAY_MAIN;
-			g_20000394 = true;
-			return;
-		}
-	}
-
-	// TODO: ???
-	if (KEY_PTT < Key) {
-		Key = KEY_SIDE2;
-	}
-
-	switch (Key) {
-	case KEY_0: case KEY_1: case KEY_2: case KEY_3:
-	case KEY_4: case KEY_5: case KEY_6: case KEY_7:
-	case KEY_8: case KEY_9:
-		MAIN_Key_DIGITS(Key, bKeyPressed, bKeyHeld);
-		break;
-	case KEY_MENU:
-		MAIN_Key_MENU(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_UP:
-		MAIN_Key_UP_DOWN(bKeyPressed, bKeyHeld, 1);
-		break;
-	case KEY_DOWN:
-		MAIN_Key_UP_DOWN(bKeyPressed, bKeyHeld, -1);
-		break;
-	case KEY_EXIT:
-		MAIN_Key_EXIT(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_STAR:
-		MAIN_Key_STAR(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_F:
-		GENERIC_Key_F(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_PTT:
-		GENERIC_Key_PTT(bKeyPressed);
-		break;
-	default:
-		if (!bKeyHeld && bKeyPressed) {
-			g_20000396 = 2;
-		}
-		break;
-	}
-}
-
-void APP_ProcessKey_MENU(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
-{
-	switch (Key) {
-	case KEY_0: case KEY_1: case KEY_2: case KEY_3:
-	case KEY_4: case KEY_5: case KEY_6: case KEY_7:
-	case KEY_8: case KEY_9:
-		MENU_Key_DIGITS(Key, bKeyPressed, bKeyHeld);
-		break;
-	case KEY_MENU:
-		MENU_Key_MENU(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_UP:
-		MENU_Key_UP_DOWN(bKeyPressed, bKeyHeld, 1);
-		break;
-	case KEY_DOWN:
-		MENU_Key_UP_DOWN(bKeyPressed, bKeyHeld, -1);
-		break;
-	case KEY_EXIT:
-		MENU_Key_EXIT(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_STAR:
-		MENU_Key_STAR(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_F:
-		GENERIC_Key_F(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_PTT:
-		GENERIC_Key_PTT(bKeyPressed);
-		break;
-	default:
-		if (!bKeyHeld && bKeyPressed) {
-			g_20000396 = 2;
-		}
-		break;
-	}
-	if (gScreenToDisplay == DISPLAY_MENU && gMenuCursor == MENU_VOL) {
-		g_20000393 = 0x20;
-	}
-}
-
-static void APP_ProcessKey_FM(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
-{
-	switch (Key) {
-	case KEY_0: case KEY_1: case KEY_2: case KEY_3:
-	case KEY_4: case KEY_5: case KEY_6: case KEY_7:
-	case KEY_8: case KEY_9:
-		FM_Key_DIGITS(Key, bKeyPressed, bKeyHeld);
-		break;
-	case KEY_MENU:
-		FM_Key_MENU(bKeyPressed, bKeyHeld);
-		return;
-	case KEY_UP:
-		FM_Key_UP_DOWN(bKeyPressed, bKeyHeld, 1);
-		break;
-	case KEY_DOWN:
-		FM_Key_UP_DOWN(bKeyPressed, bKeyHeld, -1);
-		break;;
-	case KEY_EXIT:
-		FM_Key_EXIT(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_F:
-		GENERIC_Key_F(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_PTT:
-		GENERIC_Key_PTT(bKeyPressed);
-		break;
-	default:
-		if (!bKeyHeld && bKeyPressed) {
-			g_20000396 = 2;
-		}
-		break;
-	}
-}
-
-static void APP_ProcessKey_SCANNER(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
-{
-	switch (Key) {
-	case KEY_0: case KEY_1: case KEY_2: case KEY_3:
-	case KEY_4: case KEY_5: case KEY_6: case KEY_7:
-	case KEY_8: case KEY_9:
-		SCANNER_Key_DIGITS(Key, bKeyPressed, bKeyHeld);
-		break;
-	case KEY_MENU:
-		SCANNER_Key_MENU(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_UP:
-		SCANNER_Key_UP_DOWN(bKeyPressed, bKeyHeld, 1);
-		break;
-	case KEY_DOWN:
-		SCANNER_Key_UP_DOWN(bKeyPressed, bKeyHeld, -1);
-		break;
-	case KEY_EXIT:
-		SCANNER_Key_EXIT(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_STAR:
-		SCANNER_Key_STAR(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_PTT:
-		GENERIC_Key_PTT(bKeyPressed);
-		break;
-	default:
-		if (!bKeyHeld && bKeyPressed) {
-			g_20000396 = 2;
-		}
-		break;
-	}
-}
-
-static void APP_ProcessKey_AIRCOPY(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
-{
-	switch (Key) {
-	case KEY_0: case KEY_1: case KEY_2: case KEY_3:
-	case KEY_4: case KEY_5: case KEY_6: case KEY_7:
-	case KEY_8: case KEY_9:
-		AIRCOPY_Key_DIGITS(Key, bKeyPressed, bKeyHeld);
-		break;
-	case KEY_MENU:
-		AIRCOPY_Key_MENU(bKeyPressed, bKeyHeld);
-		break;
-	case KEY_EXIT:
-		AIRCOPY_Key_EXIT(bKeyPressed, bKeyHeld);
-		break;
-	default:
 		break;
 	}
 }
@@ -1904,19 +1652,19 @@ static void APP_ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		} else if (Key != KEY_SIDE1 && Key != KEY_SIDE2) {
 			switch (gScreenToDisplay) {
 			case DISPLAY_MAIN:
-				APP_ProcessKey_MAIN(Key, bKeyPressed, bKeyHeld);
+				MAIN_ProcessKeys(Key, bKeyPressed, bKeyHeld);
 				break;
 			case DISPLAY_FM:
-				APP_ProcessKey_FM(Key, bKeyPressed, bKeyHeld);
+				FM_ProcessKeys(Key, bKeyPressed, bKeyHeld);
 				break;
 			case DISPLAY_MENU:
-				APP_ProcessKey_MENU(Key, bKeyPressed, bKeyHeld);
+				MENU_ProcessKeys(Key, bKeyPressed, bKeyHeld);
 				break;
 			case DISPLAY_SCANNER:
-				APP_ProcessKey_SCANNER(Key, bKeyPressed, bKeyHeld);
+				SCANNER_ProcessKeys(Key, bKeyPressed, bKeyHeld);
 				break;
 			case DISPLAY_AIRCOPY:
-				APP_ProcessKey_AIRCOPY(Key, bKeyPressed, bKeyHeld);
+				AIRCOPY_ProcessKeys(Key, bKeyPressed, bKeyHeld);
 				break;
 			default:
 				break;
@@ -1931,7 +1679,7 @@ static void APP_ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 Skip:
 	if (gBeepToPlay) {
 		AUDIO_PlayBeep(gBeepToPlay);
-		gBeepToPlay = 0;
+		gBeepToPlay = BEEP_NONE;
 	}
 
 	if (gFlagAcceptSetting) {

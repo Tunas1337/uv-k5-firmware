@@ -34,7 +34,7 @@ void GENERIC_Key_F(bool bKeyPressed, bool bKeyHeld)
 {
 	if (gInputBoxIndex) {
 		if (!bKeyHeld && bKeyPressed) {
-			g_20000396 = 2;
+			gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
 		}
 		return;
 	}
@@ -65,14 +65,14 @@ void GENERIC_Key_F(bool bKeyPressed, bool bKeyHeld)
 		}
 	} else {
 		if (gScreenToDisplay != DISPLAY_FM) {
-			g_20000396 = 1;
+			gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
 			return;
 		}
 		if (gFM_Step == 0) {
-			g_20000396 = 1;
+			gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
 			return;
 		}
-		g_20000396 = 2;
+		gBeepToPlay = BEEP_440HZ_500MS;
 		g_20000394 = true;
 	}
 }
@@ -164,7 +164,7 @@ void GENERIC_Key_PTT(bool bKeyPressed)
 			gRequestDisplayScreen = DISPLAY_MENU;
 		}
 	} else {
-		FM_Play();
+		FM_PlayAndUpdate();
 		gRequestDisplayScreen = DISPLAY_FM;
 	}
 	gAnotherVoiceID = VOICE_ID_SCANNING_STOP;
