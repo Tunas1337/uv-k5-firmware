@@ -103,7 +103,7 @@ void GENERIC_Key_PTT(bool bKeyPressed)
 	}
 
 	if (gScanState != SCAN_OFF) {
-		FUN_0000773c();
+		SCANNER_Stop();
 		gPttDebounceCounter = 0;
 		gPttIsPressed = false;
 		gRequestDisplayScreen = DISPLAY_MAIN;
@@ -124,7 +124,7 @@ void GENERIC_Key_PTT(bool bKeyPressed)
 					gInputBoxIndex = 0;
 					return;
 				}
-				g_200003A0 = 1;
+				gFlagPrepareTX = true;
 				if (gDTMF_InputMode) {
 					if (gDTMF_InputIndex || gDTMF_PreviousIndex) {
 						if (gDTMF_InputIndex == 0) {
@@ -132,7 +132,7 @@ void GENERIC_Key_PTT(bool bKeyPressed)
 						}
 						gDTMF_InputBox[gDTMF_InputIndex] = 0;
 						if (gDTMF_InputIndex == 3) {
-							gDTMF_CallMode = DTMF_IsGroupCall(gDTMF_InputBox, 3);
+							gDTMF_CallMode = DTMF_CheckGroupCall(gDTMF_InputBox, 3);
 						} else {
 							gDTMF_CallMode = DTMF_CALL_MODE_DTMF;
 						}
@@ -147,7 +147,7 @@ void GENERIC_Key_PTT(bool bKeyPressed)
 					return;
 				}
 				gRequestDisplayScreen = DISPLAY_MAIN;
-				g_200003A0 = 1;
+				gFlagPrepareTX = true;
 				gInputBoxIndex = 0;
 				return;
 			}

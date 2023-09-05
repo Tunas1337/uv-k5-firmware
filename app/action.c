@@ -122,7 +122,7 @@ void ACTION_Scan(bool bRestart)
 		if (IS_NOT_NOAA_CHANNEL(gRxVfo->CHANNEL_SAVE)) {
 			GUI_SelectNextDisplay(DISPLAY_MAIN);
 			if (gScanState != SCAN_OFF) {
-				FUN_0000773c();
+				SCANNER_Stop();
 				gAnotherVoiceID = VOICE_ID_SCANNING_STOP;
 			} else {
 				CHANNEL_Next(true, 1);
@@ -151,7 +151,7 @@ static void ACTION_AlarmOr1750(bool b1750)
 		gAlarmState = ALARM_STATE_TXALARM;
 	}
 	gAlarmRunningCounter = 0;
-	g_200003A0 = 1;
+	gFlagPrepareTX = true;
 	gRequestDisplayScreen = DISPLAY_MAIN;
 }
 
