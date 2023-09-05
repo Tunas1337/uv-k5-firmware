@@ -563,13 +563,15 @@ void APP_CheckRadioInterrupts(void)
 			g_SquelchLost = false;
 			BK4819_ToggleGpioOut(BK4819_GPIO0_PIN28_GREEN, false);
 		}
-		if (Mask & BK4819_REG_02_FSK_FIFO_ALMOST_FULL && gScreenToDisplay == DISPLAY_AIRCOPY && gAircopyState == AIRCOPY_TRANSFER && gAirCopyIsSendMode == 0) {
+		if (Mask & BK4819_REG_02_FSK_FIFO_ALMOST_FULL) {
 			uint8_t i;
 
 			for (i = 0; i < 4; i++) {
 				g_FSK_Buffer[gFSKWriteIndex++] = BK4819_GetRegister(BK4819_REG_5F);
 			}
-			AIRCOPY_StorePacket();
+			printf("%04X %04X %04X %04X\n", g_FSK_Buffer[gFSKWriteIndex - 3], g_FSK_Buffer[gFSKWriteIndex - 2], g_FSK_Buffer[gFSKWriteIndex - 1], g_FSK_Buffer[gFSKWriteIndex - 0]);
+			if(gScreenToDisplay == DISPLAY_AIRCOPY && gAircopyState == AIRCOPY_TRANSFER && gAirCopyIsSendMode == 0)
+				AIRCOPY_StorePacket();
 		}
 	}
 }

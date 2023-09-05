@@ -29,6 +29,7 @@
 #include "settings.h"
 #include "ui/inputbox.h"
 #include "ui/ui.h"
+#include "external/printf/printf.h"
 
 static void ACTION_FlashLight(void)
 {
@@ -38,6 +39,10 @@ static void ACTION_FlashLight(void)
 		GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
 		break;
 	case 1:
+		RADIO_SetupRegisters(true);
+		BK4819_SetupAircopy();
+		BK4819_PrepareFSKReceive();
+		printf("Activated FSK receive.\r\n");
 		gFlashLightState++;
 		break;
 	default:

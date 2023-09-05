@@ -73,7 +73,7 @@ void BOOT_ProcessMode(BOOT_Mode_t Mode)
 		gEeprom.KEY_2_SHORT_PRESS_ACTION = 0;
 		gEeprom.KEY_2_LONG_PRESS_ACTION = 0;
 
-		RADIO_InitInfo(gRxVfo, 205, 5, 41002500);
+		RADIO_InitInfo(gRxVfo, 205, 5, 44242500);
 		gRxVfo->CHANNEL_BANDWIDTH = BANDWIDTH_NARROW;
 		gRxVfo->OUTPUT_POWER = 0;
 		RADIO_ConfigureSquelchAndOutputPower(gRxVfo);

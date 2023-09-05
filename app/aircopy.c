@@ -16,6 +16,8 @@
 
 #include "app/aircopy.h"
 #include "audio.h"
+#include "driver/gpio.h"
+#include "bsp/dp32g030/gpio.h"
 #include "driver/bk4819.h"
 #include "driver/crc.h"
 #include "driver/eeprom.h"
@@ -25,6 +27,7 @@
 #include "ui/helper.h"
 #include "ui/inputbox.h"
 #include "ui/ui.h"
+#include "external/printf/printf.h"
 
 static const uint16_t Obfuscation[8] = { 0x6C16, 0xE614, 0x912E, 0x400D, 0x3521, 0x40D5, 0x0313, 0x80E9 };
 
@@ -72,9 +75,12 @@ void AIRCOPY_StorePacket(void)
 		uint16_t CRC;
 		uint8_t i;
 
+		printf("Deobfuscated: ");
 		for (i = 0; i < 34; i++) {
 			g_FSK_Buffer[i + 1] ^= Obfuscation[i % 8];
+			printf("%04X ", g_FSK_Buffer[i + 1]);
 		}
+		printf("\r\n");
 
 		CRC = CRC_Calculate(&g_FSK_Buffer[1], 2 + 64);
 		if (g_FSK_Buffer[34] == CRC) {
@@ -163,6 +169,8 @@ static void AIRCOPY_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 		g_FSK_Buffer[0] = 0xABCD;
 		g_FSK_Buffer[1] = 0;
 		g_FSK_Buffer[35] = 0xDCBA;
+		BK4819_SetAF(BK4819_AF_FSKO);
+		GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
 		AIRCOPY_SendMessage();
 		GUI_DisplayScreen();
 		gAircopyState = AIRCOPY_TRANSFER;

@@ -872,6 +872,8 @@ void BK4819_PrepareFSKReceive(void)
 			| BK4819_REG_3F_FSK_RX_FINISHED
 			| BK4819_REG_3F_FSK_FIFO_ALMOST_FULL
 			);
+	BK4819_SetAF(BK4819_AF_OPEN);
+	GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
 	// Clear RX FIFO
 	// FSK Preamble Length 7 bytes
 	// FSK SyncLength Selection
