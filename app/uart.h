@@ -14,10 +14,13 @@
  *     limitations under the License.
  */
 
-#ifndef OVERLAY_H
-#define OVERLAY_H
+#ifndef APP_UART_H
+#define APP_UART_H
 
-void OVERLAY_Install(void);
+#include <stdbool.h>
+
+bool UART_IsCommandAvailable(void);
+void UART_HandleCommand(void);
 
 #endif
 

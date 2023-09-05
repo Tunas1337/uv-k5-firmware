@@ -35,6 +35,8 @@ bool gLowBatteryBlink;
 
 volatile uint16_t gBatterySave;
 
+uint16_t gBatteryCheckCounter;
+
 void BATTERY_GetReadings(bool bDisplayBatteryLevel)
 {
 	uint16_t Voltage;
@@ -63,7 +65,7 @@ void BATTERY_GetReadings(bool bDisplayBatteryLevel)
 	gBatteryVoltageAverage = (Voltage * 760) / gBatteryCalibration[3];
 
 	if ((gScreenToDisplay == DISPLAY_MENU) && gMenuCursor == MENU_VOL) {
-		g_20000370 = 1;
+		gUpdateDisplay = true;
 	}
 	if (gBatteryCurrent < 501) {
 		if (gChargingWithTypeC) {

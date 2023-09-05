@@ -15,6 +15,7 @@
  */
 
 #include <string.h>
+#include "app/dtmf.h"
 #include "app/fm.h"
 #include "audio.h"
 #include "bsp/dp32g030/gpio.h"
@@ -30,15 +31,17 @@
 #include "radio.h"
 #include "settings.h"
 
-VFO_Info_t *gTxInfo;
-VFO_Info_t *gRxInfo;
-VFO_Info_t *gCrossTxRadioInfo;
+VFO_Info_t *gTxVfo;
+VFO_Info_t *gRxVfo;
+VFO_Info_t *gCurrentVfo;
 
 DCS_CodeType_t gCodeType;
 DCS_CodeType_t gCopyOfCodeType;
 uint8_t gCode;
 
 STEP_Setting_t gStepSetting;
+
+VfoState_t VfoState[2];
 
 bool RADIO_CheckValidChannel(uint16_t Channel, bool bCheckScanList, uint8_t VFO)
 {
@@ -433,8 +436,16 @@ void RADIO_ApplyOffset(VFO_Info_t *pInfo)
 	pInfo->ConfigTX.Frequency = Frequency;
 }
 
+static void RADIO_SelectCurrentVfo(void)
+{
+	if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
+		gCurrentVfo = gRxVfo;
+	} else {
+		gCurrentVfo = &gEeprom.VfoInfo[gEeprom.TX_CHANNEL];
+	}
+}
 
-void RADIO_ConfigureTX(void)
+void RADIO_SelectVfos(void)
 {
 	if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_CHAN_B) {
 		gEeprom.TX_CHANNEL = 1;
@@ -446,9 +457,10 @@ void RADIO_ConfigureTX(void)
 		gEeprom.TX_CHANNEL = 0;
 	}
 
-	gTxInfo = &gEeprom.VfoInfo[gEeprom.TX_CHANNEL];
-	gEeprom.RX_CHANNEL = gEeprom.TX_CHANNEL;
-	if (gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF) {
+	gTxVfo = &gEeprom.VfoInfo[gEeprom.TX_CHANNEL];
+	if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
+		gEeprom.RX_CHANNEL = gEeprom.TX_CHANNEL;
+	} else {
 		if (gEeprom.TX_CHANNEL == 0) {
 			gEeprom.RX_CHANNEL = 1;
 		} else {
@@ -456,16 +468,8 @@ void RADIO_ConfigureTX(void)
 		}
 	}
 
-	gRxInfo = &gEeprom.VfoInfo[gEeprom.RX_CHANNEL];
-	RADIO_ConfigureCrossTX();
-}
-
-void RADIO_ConfigureCrossTX(void)
-{
-	gCrossTxRadioInfo = gRxInfo;
-	if (gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF) {
-		gCrossTxRadioInfo = &gEeprom.VfoInfo[gEeprom.TX_CHANNEL];
-	}
+	gRxVfo = &gEeprom.VfoInfo[gEeprom.RX_CHANNEL];
+	RADIO_SelectCurrentVfo();
 }
 
 void RADIO_SetupRegisters(bool bSwitchToFunction0)
@@ -476,16 +480,16 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 	uint32_t Frequency;
 
 	GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
-	g_2000036B = 0;
-	BK4819_ToggleGpioOut(BK4819_GPIO0_PIN28, false);
+	gEnableSpeaker = false;
+	BK4819_ToggleGpioOut(BK4819_GPIO0_PIN28_GREEN, false);
 
-	Bandwidth = gRxInfo->CHANNEL_BANDWIDTH;
+	Bandwidth = gRxVfo->CHANNEL_BANDWIDTH;
 	if (Bandwidth != BK4819_FILTER_BW_WIDE) {
 		Bandwidth = BK4819_FILTER_BW_NARROW;
 	}
 	BK4819_SetFilterBandwidth(Bandwidth);
 
-	BK4819_ToggleGpioOut(BK4819_GPIO1_PIN29, false);
+	BK4819_ToggleGpioOut(BK4819_GPIO1_PIN29_RED, false);
 	BK4819_SetupPowerAmplifier(0, 0);
 	BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1, false);
 
@@ -499,16 +503,16 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 	}
 	BK4819_WriteRegister(BK4819_REG_3F, 0);
 	BK4819_WriteRegister(BK4819_REG_7D, gEeprom.MIC_SENSITIVITY_TUNING | 0xE940);
-	if (IS_NOT_NOAA_CHANNEL(gRxInfo->CHANNEL_SAVE) || !gIsNoaaMode) {
-		Frequency = gRxInfo->pCurrent->Frequency;
+	if (IS_NOT_NOAA_CHANNEL(gRxVfo->CHANNEL_SAVE) || !gIsNoaaMode) {
+		Frequency = gRxVfo->pCurrent->Frequency;
 	} else {
 		Frequency = NoaaFrequencyTable[gNoaaChannel];
 	}
 	BK4819_SetFrequency(Frequency);
 	BK4819_SetupSquelch(
-			gRxInfo->SquelchOpenRSSIThresh, gRxInfo->SquelchCloseRSSIThresh,
-			gRxInfo->SquelchOpenNoiseThresh, gRxInfo->SquelchCloseNoiseThresh,
-			gRxInfo->SquelchCloseGlitchThresh, gRxInfo->SquelchOpenGlitchThresh);
+			gRxVfo->SquelchOpenRSSIThresh, gRxVfo->SquelchCloseRSSIThresh,
+			gRxVfo->SquelchOpenNoiseThresh, gRxVfo->SquelchCloseNoiseThresh,
+			gRxVfo->SquelchCloseGlitchThresh, gRxVfo->SquelchOpenGlitchThresh);
 	BK4819_PickRXFilterPathBasedOnFrequency(Frequency);
 	BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2, true);
 	BK4819_WriteRegister(BK4819_REG_48, 0xB3A8);
@@ -518,16 +522,16 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 		| BK4819_REG_3F_SQUELCH_LOST
 		;
 
-	if (IS_NOT_NOAA_CHANNEL(gRxInfo->CHANNEL_SAVE)) {
-		if (!gRxInfo->IsAM) {
+	if (IS_NOT_NOAA_CHANNEL(gRxVfo->CHANNEL_SAVE)) {
+		if (!gRxVfo->IsAM) {
 			uint8_t CodeType;
 			uint8_t Code;
 
 			CodeType = gCodeType;
 			Code = gCode;
-			if (g_20000381 == 0) {
-				CodeType = gRxInfo->pCurrent->CodeType;
-				Code = gRxInfo->pCurrent->Code;
+			if (gCssScanMode == CSS_SCAN_MODE_OFF) {
+				CodeType = gRxVfo->pCurrent->CodeType;
+				Code = gRxVfo->pCurrent->Code;
 			}
 			switch (CodeType) {
 			case CODE_TYPE_DIGITAL:
@@ -542,7 +546,7 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 					;
 				break;
 			case CODE_TYPE_CONTINUOUS_TONE:
-				BK4819_SetCTCSSBaudRate(CTCSS_Options[Code]);
+				BK4819_SetCTCSSFrequency(CTCSS_Options[Code]);
 				BK4819_Set55HzTailDetection();
 				InterruptMask = 0
 					| BK4819_REG_3F_CxCSS_TAIL
@@ -553,7 +557,7 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 					;
 				break;
 			default:
-				BK4819_SetCTCSSBaudRate(670);
+				BK4819_SetCTCSSFrequency(670);
 				BK4819_Set55HzTailDetection();
 				InterruptMask = 0
 					| BK4819_REG_3F_CxCSS_TAIL
@@ -562,14 +566,14 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 					;
 				break;
 			}
-			if (gRxInfo->SCRAMBLING_TYPE == 0 || !gSetting_ScrambleEnable) {
+			if (gRxVfo->SCRAMBLING_TYPE == 0 || !gSetting_ScrambleEnable) {
 				BK4819_DisableScramble();
 			} else {
-				BK4819_EnableScramble(gRxInfo->SCRAMBLING_TYPE - 1);
+				BK4819_EnableScramble(gRxVfo->SCRAMBLING_TYPE - 1);
 			}
 		}
 	} else {
-		BK4819_SetCTCSSBaudRate(2625);
+		BK4819_SetCTCSSFrequency(2625);
 		InterruptMask = 0
 			| BK4819_REG_3F_CTCSS_FOUND
 			| BK4819_REG_3F_CTCSS_LOST
@@ -578,7 +582,7 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 			;
 	}
 
-	if (gEeprom.VOX_SWITCH && !gFmRadioMode && IS_NOT_NOAA_CHANNEL(gCrossTxRadioInfo->CHANNEL_SAVE) && !gCrossTxRadioInfo->IsAM) {
+	if (gEeprom.VOX_SWITCH && !gFmRadioMode && IS_NOT_NOAA_CHANNEL(gCurrentVfo->CHANNEL_SAVE) && !gCurrentVfo->IsAM) {
 		BK4819_EnableVox(gEeprom.VOX1_THRESHOLD, gEeprom.VOX0_THRESHOLD);
 		InterruptMask |= 0
 			| BK4819_REG_3F_VOX_FOUND
@@ -587,7 +591,7 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 	} else {
 		BK4819_DisableVox();
 	}
-	if (gRxInfo->IsAM || (!gRxInfo->DTMF_DECODING_ENABLE && !gSetting_KILLED)) {
+	if (gRxVfo->IsAM || (!gRxVfo->DTMF_DECODING_ENABLE && !gSetting_KILLED)) {
 		BK4819_DisableDTMF();
 	} else {
 		BK4819_EnableDTMF();
@@ -597,8 +601,8 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 
 	FUNCTION_Init();
 
-	if (bSwitchToFunction0 == 1) {
-		FUNCTION_Select(FUNCTION_0);
+	if (bSwitchToFunction0) {
+		FUNCTION_Select(FUNCTION_FOREGROUND);
 	}
 }
 
@@ -624,9 +628,9 @@ void RADIO_ConfigureNOAA(void)
 			gIsNoaaMode = true;
 			return;
 		}
-		if (gRxInfo->CHANNEL_SAVE >= NOAA_CHANNEL_FIRST) {
+		if (gRxVfo->CHANNEL_SAVE >= NOAA_CHANNEL_FIRST) {
 			gIsNoaaMode = true;
-			gNoaaChannel = gRxInfo->CHANNEL_SAVE - NOAA_CHANNEL_FIRST;
+			gNoaaChannel = gRxVfo->CHANNEL_SAVE - NOAA_CHANNEL_FIRST;
 			gNOAA_Countdown = 50;
 			gScheduleNOAA = false;
 		} else {
@@ -637,41 +641,41 @@ void RADIO_ConfigureNOAA(void)
 	}
 }
 
-void RADIO_PrepareTransmit(void)
+void RADIO_SetTxParameters(void)
 {
 	BK4819_FilterBandwidth_t Bandwidth;
 
 	GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
 
-	g_2000036B = 0;
+	gEnableSpeaker = false;
 
 	BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2, false);
-	Bandwidth = gCrossTxRadioInfo->CHANNEL_BANDWIDTH;
+	Bandwidth = gCurrentVfo->CHANNEL_BANDWIDTH;
 	if (Bandwidth != BK4819_FILTER_BW_WIDE) {
 		Bandwidth = BK4819_FILTER_BW_NARROW;
 	}
 	BK4819_SetFilterBandwidth(Bandwidth);
-	BK4819_SetFrequency(gCrossTxRadioInfo->pReverse->Frequency);
+	BK4819_SetFrequency(gCurrentVfo->pReverse->Frequency);
 	BK4819_PrepareTransmit();
 	SYSTEM_DelayMs(10);
 
-	BK4819_PickRXFilterPathBasedOnFrequency(gCrossTxRadioInfo->pReverse->Frequency);
+	BK4819_PickRXFilterPathBasedOnFrequency(gCurrentVfo->pReverse->Frequency);
 	BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1, true);
 	SYSTEM_DelayMs(5);
 
-	BK4819_SetupPowerAmplifier(gCrossTxRadioInfo->TXP_CalculatedSetting, gCrossTxRadioInfo->pReverse->Frequency);
+	BK4819_SetupPowerAmplifier(gCurrentVfo->TXP_CalculatedSetting, gCurrentVfo->pReverse->Frequency);
 	SYSTEM_DelayMs(10);
 
-	switch (gCrossTxRadioInfo->pReverse->CodeType) {
+	switch (gCurrentVfo->pReverse->CodeType) {
 	case CODE_TYPE_CONTINUOUS_TONE:
-		BK4819_SetCTCSSBaudRate(CTCSS_Options[gCrossTxRadioInfo->pReverse->Code]);
+		BK4819_SetCTCSSFrequency(CTCSS_Options[gCurrentVfo->pReverse->Code]);
 		break;
 	case CODE_TYPE_DIGITAL:
 	case CODE_TYPE_REVERSE_DIGITAL:
 		BK4819_SetCDCSSCodeWord(
 			DCS_GetGolayCodeWord(
-				gCrossTxRadioInfo->pReverse->CodeType,
-				gCrossTxRadioInfo->pReverse->Code
+				gCurrentVfo->pReverse->CodeType,
+				gCurrentVfo->pReverse->Code
 				)
 			);
 		break;
@@ -681,91 +685,92 @@ void RADIO_PrepareTransmit(void)
 	}
 }
 
-void RADIO_SomethingElse(uint8_t Arg)
+void RADIO_SetVfoState(VfoState_t State)
 {
-	if (Arg == 0) {
-		g_20000371[0] = 0;
-		g_20000371[1] = 0;
-		g_20000373 = 0;
+	if (State == VFO_STATE_NORMAL) {
+		VfoState[0] = VFO_STATE_NORMAL;
+		VfoState[1] = VFO_STATE_NORMAL;
+		gFM_ResumeCountdown = 0;
 	} else {
-		if (Arg == 6) {
-			g_20000371[0] = 6;
-			g_20000371[1] = 3;
+		if (State == VFO_STATE_VOL_HIGH) {
+			VfoState[0] = VFO_STATE_VOL_HIGH;
+			VfoState[1] = VFO_STATE_TX_DISABLE;
 		} else {
 			uint8_t Channel;
 
-			Channel = gEeprom.RX_CHANNEL;
-			if (gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF) {
+			if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
+				Channel = gEeprom.RX_CHANNEL;
+			} else {
 				Channel = gEeprom.TX_CHANNEL;
 			}
-			g_20000371[Channel] = Arg;
+			VfoState[Channel] = State;
 		}
-		g_20000373 = 5;
+		gFM_ResumeCountdown = 5;
 	}
 	gUpdateDisplay = true;
 }
 
-void RADIO_SomethingWithTransmit(void)
+void RADIO_PrepareTX(void)
 {
 	if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF) {
-		g_2000033A = 360;
-		gSystickFlag7 = 0;
-		if (g_2000041F == 0) {
+		gDualWatchCountdown = 360;
+		gScheduleDualWatch = false;
+		if (!gRxVfoIsActive) {
 			gEeprom.RX_CHANNEL = gEeprom.TX_CHANNEL;
-			gRxInfo = gEeprom.VfoInfo + gEeprom.TX_CHANNEL;
+			gRxVfo = &gEeprom.VfoInfo[gEeprom.TX_CHANNEL];
 		}
-		g_2000041F = 1;
+		gRxVfoIsActive = true;
 	}
-	RADIO_ConfigureCrossTX();
-	if (g_20000383 == 0 || g_20000383 == 3 || (g_20000383 == 1 && gEeprom.ALARM_MODE == 1)) {
-		uint8_t Value;
+	RADIO_SelectCurrentVfo();
+	if (gAlarmState == ALARM_STATE_OFF || gAlarmState == ALARM_STATE_TX1750 || (gAlarmState == ALARM_STATE_ALARM && gEeprom.ALARM_MODE == ALARM_MODE_TONE)) {
+		VfoState_t State;
 
-		if (!FREQUENCY_Check(gCrossTxRadioInfo)) {
-			if (gCrossTxRadioInfo->BUSY_CHANNEL_LOCK && gCurrentFunction == FUNCTION_RECEIVE) {
-				Value = 1;
+		if (!FREQUENCY_Check(gCurrentVfo)) {
+			if (gCurrentVfo->BUSY_CHANNEL_LOCK && gCurrentFunction == FUNCTION_RECEIVE) {
+				State = VFO_STATE_BUSY;
 			} else if (gBatteryDisplayLevel == 0) {
-				Value = 2;
+				State = VFO_STATE_BAT_LOW;
+			} else if (gBatteryDisplayLevel == 6) {
+				State = VFO_STATE_VOL_HIGH;
 			} else {
-				// TODO: Fix this goto, a bit painful to disentangle
-				if (gBatteryDisplayLevel != 6) {
-					goto LAB_00007c20;
-				}
-				Value = 6;
+				goto Skip;
 			}
 		} else {
-			Value = 3;
+			State = VFO_STATE_TX_DISABLE;
 		}
-		RADIO_SomethingElse(Value);
-		g_20000383 = 0;
+		RADIO_SetVfoState(State);
+		gAlarmState = ALARM_STATE_OFF;
 		AUDIO_PlayBeep(BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL);
-	} else {
-LAB_00007c20:
-		if (g_200003BE == 1) {
-			if (g_20000438 == 2) {
-				g_200003BD = 1;
-				g_200003BC = 0;
-				g_200003C3 = 6;
-			} else {
-				g_200003BC = 1;
-				g_200003BD = 0;
-			}
-		}
-		FUNCTION_Select(FUNCTION_TRANSMIT);
-		if (g_20000383 == 0) {
-			gTxTimerCountdown = gEeprom.TX_TIMEOUT_TIMER * 120;
-		} else {
-			gTxTimerCountdown = 0;
-		}
-		gTxTimeoutReached = false;
-		g_200003FD = 0;
-		gRTTECountdown = 0;
+		gDTMF_ReplyState = DTMF_REPLY_NONE;
+		return;
 	}
-	g_200003BE = 0;
+
+Skip:
+	if (gDTMF_ReplyState == DTMF_REPLY_ANI) {
+		if (gDTMF_CallMode == DTMF_CALL_MODE_DTMF) {
+			gDTMF_IsTx = true;
+			gDTMF_CallState = DTMF_CALL_STATE_NONE;
+			gDTMF_TxStopCountdown = 6;
+		} else {
+			gDTMF_CallState = DTMF_CALL_STATE_CALL_OUT;
+			gDTMF_IsTx = false;
+		}
+	}
+	FUNCTION_Select(FUNCTION_TRANSMIT);
+	if (gAlarmState == ALARM_STATE_OFF) {
+		gTxTimerCountdown = gEeprom.TX_TIMEOUT_TIMER * 120;
+	} else {
+		gTxTimerCountdown = 0;
+	}
+	gTxTimeoutReached = false;
+	gFlagEndTransmission = false;
+	gRTTECountdown = 0;
+	gDTMF_ReplyState = DTMF_REPLY_NONE;
 }
 
 void RADIO_EnableCxCSS(void)
 {
-	switch (gCrossTxRadioInfo->pReverse->CodeType) {
+	switch (gCurrentVfo->pReverse->CodeType) {
 	case CODE_TYPE_DIGITAL:
 	case CODE_TYPE_REVERSE_DIGITAL:
 		BK4819_EnableCDCSS();
@@ -778,17 +783,17 @@ void RADIO_EnableCxCSS(void)
 	SYSTEM_DelayMs(200);
 }
 
-void RADIO_Something(void)
+void RADIO_PrepareCssTX(void)
 {
-	RADIO_SomethingWithTransmit();
+	RADIO_PrepareTX();
 	SYSTEM_DelayMs(200);
 	RADIO_EnableCxCSS();
 	RADIO_SetupRegisters(true);
 }
 
-void RADIO_Whatever(void)
+void RADIO_StopCssScan(void)
 {
-	g_20000381 = 0;
+	gCssScanMode = CSS_SCAN_MODE_OFF;
 	RADIO_SetupRegisters(true);
 }
 
@@ -799,10 +804,10 @@ void RADIO_SendEndOfTransmission(void)
 	} else if (gEeprom.ROGER == ROGER_MODE_MDC) {
 		BK4819_PlayRogerMDC();
 	}
-	if (g_200003BC == 0 && (gCrossTxRadioInfo->DTMF_PTT_ID_TX_MODE == PTT_ID_EOT || gCrossTxRadioInfo->DTMF_PTT_ID_TX_MODE == PTT_ID_BOTH)) {
+	if (gDTMF_CallState == DTMF_CALL_STATE_NONE && (gCurrentVfo->DTMF_PTT_ID_TX_MODE == PTT_ID_EOT || gCurrentVfo->DTMF_PTT_ID_TX_MODE == PTT_ID_BOTH)) {
 		if (gEeprom.DTMF_SIDE_TONE) {
 			GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
-			g_2000036B = 1;
+			gEnableSpeaker = true;
 			SYSTEM_DelayMs(60);
 		}
 		BK4819_EnterDTMF_TX(gEeprom.DTMF_SIDE_TONE);
@@ -815,7 +820,7 @@ void RADIO_SendEndOfTransmission(void)
 			gEeprom.DTMF_CODE_INTERVAL_TIME
 			);
 		GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
-		g_2000036B = 0;
+		gEnableSpeaker = false;
 	}
 	BK4819_ExitDTMF_TX(true);
 }

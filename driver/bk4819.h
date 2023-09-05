@@ -48,7 +48,7 @@ enum BK4819_CssScanResult_t {
 
 typedef enum BK4819_CssScanResult_t BK4819_CssScanResult_t;
 
-extern bool gThisCanEnable_BK4819_Rxon;
+extern bool gRxIdleMode;
 
 void BK4819_Init(void);
 uint16_t BK4819_GetRegister(BK4819_REGISTER_t Register);
@@ -61,7 +61,7 @@ void BK4819_SetAGC(uint8_t Value);
 void BK4819_ToggleGpioOut(BK4819_GPIO_PIN_t Pin, bool bSet);
 
 void BK4819_SetCDCSSCodeWord(uint32_t CodeWord);
-void BK4819_SetCTCSSBaudRate(uint32_t BaudRate);
+void BK4819_SetCTCSSFrequency(uint32_t BaudRate);
 void BK4819_Set55HzTailDetection(void);
 void BK4819_EnableVox(uint16_t Vox1Threshold, uint16_t Vox0Threshold);
 void BK4819_SetFilterBandwidth(BK4819_FilterBandwidth_t Bandwidth);
@@ -100,7 +100,7 @@ void BK4819_ExitDTMF_TX(bool bKeep);
 void BK4819_EnableTXLink(void);
 
 void BK4819_PlayDTMF(char Code);
-void BK4819_PlayDTMFString(char *pString, bool bDelayFirst, uint16_t FirstCodePersistTime, uint16_t HashCodePersistTime, uint16_t CodePersistTime, uint16_t CodeInternalTime);
+void BK4819_PlayDTMFString(const char *pString, bool bDelayFirst, uint16_t FirstCodePersistTime, uint16_t HashCodePersistTime, uint16_t CodePersistTime, uint16_t CodeInternalTime);
 
 void BK4819_TransmitTone(bool bLocalLoopback, uint32_t Frequency);
 

@@ -14,20 +14,20 @@
  *     limitations under the License.
  */
 
-#ifndef BOARD_H
-#define BOARD_H
+#ifndef APP_ACTION_H
+#define APP_ACTION_H
 
-#include <stdint.h>
+#include "driver/keyboard.h"
 
-void BOARD_FLASH_Init(void);
-void BOARD_GPIO_Init(void);
-void BOARD_PORTCON_Init(void);
-void BOARD_ADC_Init(void);
-void BOARD_ADC_GetBatteryInfo(uint16_t *pVoltage, uint16_t *pCurrent);
-void BOARD_Init(void);
-void BOARD_EEPROM_Init(void);
-void BOARD_EEPROM_LoadMoreSettings(void);
-void BOARD_FactoryReset(bool bIsAll);
+//static void ACTION_FlashLight(void)
+void ACTION_Power(void);
+//static void ACTION_Monitor(void)
+void ACTION_Scan(bool bFlag);
+void ACTION_Vox(void);
+//static void ACTION_AlarmOr1750(bool b1750)
+void ACTION_FM(void);
+
+void ACTION_Handle(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld);
 
 #endif
 

@@ -21,6 +21,7 @@
 #include "external/printf/printf.h"
 #include "functions.h"
 #include "misc.h"
+#include "radio.h"
 #include "settings.h"
 #include "ui/helper.h"
 #include "ui/inputbox.h"
@@ -29,7 +30,6 @@
 void UI_DisplayMain(void)
 {
 	char String[16];
-	char String2[16];
 	uint8_t i;
 
 	memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
@@ -60,27 +60,29 @@ void UI_DisplayMain(void)
 		Channel = gEeprom.TX_CHANNEL;
 		bIsSameVfo = !!(Channel == i);
 
-		if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF && g_2000041F == 1) {
+		if (gEeprom.DUAL_WATCH != DUAL_WATCH_OFF && gRxVfoIsActive) {
 			Channel = gEeprom.RX_CHANNEL;
 		}
 
 		if (Channel != i) {
-			if (g_200003BC || g_200003BD || gDTMF_InputMode) {
+			if (gDTMF_CallState != DTMF_CALL_STATE_NONE || gDTMF_IsTx || gDTMF_InputMode) {
+				char Contact[16];
+
 				if (!gDTMF_InputMode) {
-					if (g_200003BC == 1) {
-						if (gDTMF_State == 2) {
+					if (gDTMF_CallState == DTMF_CALL_STATE_CALL_OUT) {
+						if (gDTMF_State == DTMF_STATE_CALL_OUT_RSP) {
 							strcpy(String, "CALL OUT(RSP)");
 						} else {
 							strcpy(String, "CALL OUT");
 						}
-					} else if (g_200003BC == 2) {
-						if (DTMF_FindContact(gDTMF_Contact0, String2)) {
-							sprintf(String, "CALL:%s", String2);
+					} else if (gDTMF_CallState == DTMF_CALL_STATE_RECEIVED) {
+						if (DTMF_FindContact(gDTMF_Caller, Contact)) {
+							sprintf(String, "CALL:%s", Contact);
 						} else {
-							sprintf(String, "CALL:%s", gDTMF_Contact0);
+							sprintf(String, "CALL:%s", gDTMF_Caller);
 						}
-					} else if (g_200003BD == 1) {
-						if (gDTMF_State == 1) {
+					} else if (gDTMF_IsTx) {
+						if (gDTMF_State == DTMF_STATE_TX_SUCC) {
 							strcpy(String, "DTMF TX(SUCC)");
 						} else {
 							strcpy(String, "DTMF TX");
@@ -92,22 +94,22 @@ void UI_DisplayMain(void)
 				UI_PrintString(String, 2, 127, i * 3, 8, false);
 
 				memset(String, 0, sizeof(String));
-				memset(String2, 0, sizeof(String2));
+				memset(Contact, 0, sizeof(Contact));
 
 				if (!gDTMF_InputMode) {
-					if (g_200003BC == 1) {
-						if (DTMF_FindContact(gDTMF_String, String2)) {
-							sprintf(String, ">%s", String2);
+					if (gDTMF_CallState == DTMF_CALL_STATE_CALL_OUT) {
+						if (DTMF_FindContact(gDTMF_String, Contact)) {
+							sprintf(String, ">%s", Contact);
 						} else {
 							sprintf(String, ">%s", gDTMF_String);
 						}
-					} else if (g_200003BC == 2) {
-						if (DTMF_FindContact(gDTMF_Contact1, String2)) {
-							sprintf(String, ">%s", String2);
+					} else if (gDTMF_CallState == DTMF_CALL_STATE_RECEIVED) {
+						if (DTMF_FindContact(gDTMF_Callee, Contact)) {
+							sprintf(String, ">%s", Contact);
 						} else {
-							sprintf(String, ">%s", gDTMF_Contact1);
+							sprintf(String, ">%s", gDTMF_Callee);
 						}
-					} else if (g_200003BD == 1) {
+					} else if (gDTMF_IsTx) {
 						sprintf(String, ">%s", gDTMF_String);
 					}
 				}
@@ -128,11 +130,12 @@ void UI_DisplayMain(void)
 		uint32_t SomeValue = 0;
 
 		if (gCurrentFunction == FUNCTION_TRANSMIT) {
-			if (g_20000383 == 2) {
+			if (gAlarmState == ALARM_STATE_ALARM) {
 				SomeValue = 2;
 			} else {
-				Channel = gEeprom.RX_CHANNEL;
-				if (gEeprom.CROSS_BAND_RX_TX != CROSS_BAND_OFF) {
+				if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
+					Channel = gEeprom.RX_CHANNEL;
+				} else {
 					Channel = gEeprom.TX_CHANNEL;
 				}
 				if (Channel == i) {
@@ -175,22 +178,22 @@ void UI_DisplayMain(void)
 
 		// 0x8FEC
 
-		uint8_t g371 = g_20000371[i];
-		if (gCurrentFunction == FUNCTION_TRANSMIT && g_20000383 == 2) {
+		uint8_t State = VfoState[i];
+		if (gCurrentFunction == FUNCTION_TRANSMIT && gAlarmState == ALARM_STATE_ALARM) {
 			if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
 				Channel = gEeprom.RX_CHANNEL;
 			} else {
 				Channel = gEeprom.TX_CHANNEL;
 			}
 			if (Channel == i) {
-				g371 = 5;
+				State = VFO_STATE_ALARM;
 			}
 		}
-		if (g371) {
+		if (State) {
 			uint8_t Width = 10;
 
 			memset(String, 0, sizeof(String));
-			switch (g371) {
+			switch (State) {
 			case 1:
 				strcpy(String, "BUSY");
 				Width = 15;
@@ -293,9 +296,9 @@ void UI_DisplayMain(void)
 		uint8_t Level = 0;
 
 		if (SomeValue == 1) {
-				if (gRxInfo->OUTPUT_POWER == OUTPUT_POWER_LOW) {
+				if (gRxVfo->OUTPUT_POWER == OUTPUT_POWER_LOW) {
 					Level = 2;
-				} else if (gRxInfo->OUTPUT_POWER == OUTPUT_POWER_MID) {
+				} else if (gRxVfo->OUTPUT_POWER == OUTPUT_POWER_MID) {
 					Level = 4;
 				} else {
 					Level = 6;

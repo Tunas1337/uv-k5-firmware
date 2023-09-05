@@ -14,8 +14,10 @@
  *     limitations under the License.
  */
 
+#include "app/app.h"
 #include "app/fm.h"
 #include "app/generic.h"
+#include "app/scanner.h"
 #include "audio.h"
 #include "driver/keyboard.h"
 #include "dtmf.h"
@@ -26,15 +28,11 @@
 #include "ui/inputbox.h"
 #include "ui/ui.h"
 
-extern void FUN_0000773c(void);
-extern void PlayFMRadio(void);
-extern void TalkRelatedCode(void);
-
 void GENERIC_Key_F(bool bKeyPressed, bool bKeyHeld)
 {
 	if (gInputBoxIndex) {
 		if (!bKeyHeld && bKeyPressed) {
-			g_20000396 = 2;
+			gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
 		}
 		return;
 	}
@@ -65,15 +63,15 @@ void GENERIC_Key_F(bool bKeyPressed, bool bKeyHeld)
 		}
 	} else {
 		if (gScreenToDisplay != DISPLAY_FM) {
-			g_20000396 = 1;
+			gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
 			return;
 		}
-		if (gFM_Step == 0) {
-			g_20000396 = 1;
+		if (gFM_ScanState == FM_SCAN_OFF) {
+			gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
 			return;
 		}
-		g_20000396 = 2;
-		g_20000394 = true;
+		gBeepToPlay = BEEP_440HZ_500MS;
+		gPttWasReleased = true;
 	}
 }
 
@@ -83,20 +81,20 @@ void GENERIC_Key_PTT(bool bKeyPressed)
 	if (!bKeyPressed) {
 		if (gScreenToDisplay == DISPLAY_MAIN) {
 			if (gCurrentFunction == FUNCTION_TRANSMIT) {
-				if (g_200003FD == 1) {
-					FUNCTION_Select(FUNCTION_0);
+				if (gFlagEndTransmission) {
+					FUNCTION_Select(FUNCTION_FOREGROUND);
 				} else {
-					TalkRelatedCode();
+					APP_EndTransmission();
 					if (gEeprom.REPEATER_TAIL_TONE_ELIMINATION == 0) {
-						FUNCTION_Select(FUNCTION_0);
+						FUNCTION_Select(FUNCTION_FOREGROUND);
 					} else {
 						gRTTECountdown = gEeprom.REPEATER_TAIL_TONE_ELIMINATION * 10;
 					}
 				}
-				g_200003FD = 0;
-				g_200003B4 = 0;
+				gFlagEndTransmission = false;
+				gVOX_NoiseDetected = false;
 			}
-			RADIO_SomethingElse(0);
+			RADIO_SetVfoState(VFO_STATE_NORMAL);
 			gRequestDisplayScreen = DISPLAY_MAIN;
 			return;
 		}
@@ -104,16 +102,16 @@ void GENERIC_Key_PTT(bool bKeyPressed)
 		return;
 	}
 
-	if (gStepDirection) {
-		FUN_0000773c();
+	if (gScanState != SCAN_OFF) {
+		SCANNER_Stop();
 		gPttDebounceCounter = 0;
 		gPttIsPressed = false;
 		gRequestDisplayScreen = DISPLAY_MAIN;
 		return;
 	}
 
-	if (gFM_Step == 0) {
-		if (g_20000381 == 0) {
+	if (gFM_ScanState == FM_SCAN_OFF) {
+		if (gCssScanMode == CSS_SCAN_MODE_OFF) {
 			if (gScreenToDisplay == DISPLAY_MENU || gScreenToDisplay == DISPLAY_FM) {
 				gRequestDisplayScreen = DISPLAY_MAIN;
 				gInputBoxIndex = 0;
@@ -126,22 +124,22 @@ void GENERIC_Key_PTT(bool bKeyPressed)
 					gInputBoxIndex = 0;
 					return;
 				}
-				g_200003A0 = 1;
+				gFlagPrepareTX = true;
 				if (gDTMF_InputMode) {
-					if (gDTMF_InputIndex || g_200003C0) {
+					if (gDTMF_InputIndex || gDTMF_PreviousIndex) {
 						if (gDTMF_InputIndex == 0) {
-							gDTMF_InputIndex = g_200003C0;
+							gDTMF_InputIndex = gDTMF_PreviousIndex;
 						}
 						gDTMF_InputBox[gDTMF_InputIndex] = 0;
 						if (gDTMF_InputIndex == 3) {
-							g_20000438 = DTMF_IsGroupCall(gDTMF_InputBox, 3);
+							gDTMF_CallMode = DTMF_CheckGroupCall(gDTMF_InputBox, 3);
 						} else {
-							g_20000438 = 2;
+							gDTMF_CallMode = DTMF_CALL_MODE_DTMF;
 						}
 						sprintf(gDTMF_String, "%s", gDTMF_InputBox);
-						g_200003C0 = gDTMF_InputIndex;
-						g_200003BE = 1;
-						gDTMF_State = 0;
+						gDTMF_PreviousIndex = gDTMF_InputIndex;
+						gDTMF_ReplyState = DTMF_REPLY_ANI;
+						gDTMF_State = DTMF_STATE_0;
 					}
 					gRequestDisplayScreen = DISPLAY_MAIN;
 					gDTMF_InputMode = false;
@@ -149,7 +147,7 @@ void GENERIC_Key_PTT(bool bKeyPressed)
 					return;
 				}
 				gRequestDisplayScreen = DISPLAY_MAIN;
-				g_200003A0 = 1;
+				gFlagPrepareTX = true;
 				gInputBoxIndex = 0;
 				return;
 			}
@@ -158,16 +156,16 @@ void GENERIC_Key_PTT(bool bKeyPressed)
 			gUpdateStatus = true;
 			gFlagStopScan = true;
 			gVfoConfigureMode = VFO_CONFIGURE_RELOAD;
-			g_2000039B = 1;
+			gFlagResetVfos = true;
 		} else {
-			RADIO_Whatever();
+			RADIO_StopCssScan();
 			gRequestDisplayScreen = DISPLAY_MENU;
 		}
 	} else {
-		FM_Play();
+		FM_PlayAndUpdate();
 		gRequestDisplayScreen = DISPLAY_FM;
 	}
 	gAnotherVoiceID = VOICE_ID_SCANNING_STOP;
-	g_20000395 = 1;
+	gPttWasPressed = true;
 }
 

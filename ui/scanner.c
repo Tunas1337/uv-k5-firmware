@@ -16,6 +16,7 @@
 
 #include <stdbool.h>
 #include <string.h>
+#include "app/scanner.h"
 #include "dcs.h"
 #include "driver/st7565.h"
 #include "external/printf/printf.h"
@@ -32,7 +33,7 @@ void UI_DisplayScanner(void)
 	memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
 	memset(String, 0, sizeof(String));
 
-	if (g_20000458 == 1 || (gScanState != 0 && gScanState != 3)) {
+	if (gScanSingleFrequency || (gScanCssState != SCAN_CSS_STATE_OFF && gScanCssState != SCAN_CSS_STATE_FAILED)) {
 		sprintf(String, "FREQ:%.5f", gScanFrequency * 1e-05);
 	} else {
 		sprintf(String, "FREQ:**.*****");
@@ -40,12 +41,12 @@ void UI_DisplayScanner(void)
 	UI_PrintString(String, 2, 127, 1, 8, 0);
 	memset(String, 0, sizeof(String));
 
-	if (gScanState < 2 || g_2000045C != 1) {
+	if (gScanCssState < SCAN_CSS_STATE_FOUND || !gScanUseCssResult) {
 		sprintf(String, "CTC:******");
-	} else if (g_CxCSS_Type == 1) {
-		sprintf(String, "CTC:%.1fHz", CTCSS_Options[g_CxCSS_Index] * 0.1);
+	} else if (gScanCssResultType == CODE_TYPE_CONTINUOUS_TONE) {
+		sprintf(String, "CTC:%.1fHz", CTCSS_Options[gScanCssResultIndex] * 0.1);
 	} else {
-		sprintf(String, "DCS:D%03oN", DCS_Options[g_CxCSS_Index]);
+		sprintf(String, "DCS:D%03oN", DCS_Options[gScanCssResultIndex]);
 	}
 	UI_PrintString(String, 2, 127, 3, 8, 0);
 	memset(String, 0, sizeof(String));
@@ -58,11 +59,11 @@ void UI_DisplayScanner(void)
 		if (gScannerEditState == 1) {
 			strcpy(String, "SAVE:");
 			UI_GenerateChannelStringEx(String + 5, gShowChPrefix, gScanChannel);
-		} else if (gScanState < 2) {
+		} else if (gScanCssState < SCAN_CSS_STATE_FOUND) {
 			strcpy(String, "SCAN");
-			memset(String + 4, '.', (g_20000464 & 7) + 1);
+			memset(String + 4, '.', (gScanProgressIndicator & 7) + 1);
 		} else {
-			if (gScanState == 2) {
+			if (gScanCssState == SCAN_CSS_STATE_FOUND) {
 				strcpy(String, "SCAN CMP.");
 			} else {
 				strcpy(String, "SCAN FAIL.");

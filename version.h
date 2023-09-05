@@ -14,20 +14,10 @@
  *     limitations under the License.
  */
 
-#ifndef BOARD_H
-#define BOARD_H
+#ifndef VERSION_H
+#define VERSION_H
 
-#include <stdint.h>
-
-void BOARD_FLASH_Init(void);
-void BOARD_GPIO_Init(void);
-void BOARD_PORTCON_Init(void);
-void BOARD_ADC_Init(void);
-void BOARD_ADC_GetBatteryInfo(uint16_t *pVoltage, uint16_t *pCurrent);
-void BOARD_Init(void);
-void BOARD_EEPROM_Init(void);
-void BOARD_EEPROM_LoadMoreSettings(void);
-void BOARD_FactoryReset(bool bIsAll);
+extern const char Version[];
 
 #endif
 

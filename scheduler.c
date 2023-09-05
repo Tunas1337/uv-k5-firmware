@@ -14,11 +14,22 @@
  *     limitations under the License.
  */
 
+#include "app/fm.h"
+#include "app/scanner.h"
 #include "audio.h"
 #include "functions.h"
 #include "helper/battery.h"
 #include "misc.h"
 #include "settings.h"
+
+#define DECREMENT_AND_TRIGGER(cnt, flag) \
+	do { \
+		if (cnt) { \
+			if (--cnt == 0) { \
+				flag = true; \
+			} \
+		} \
+	} while(0)
 
 static volatile uint32_t gGlobalSysTickCounter;
 
@@ -30,12 +41,7 @@ void SystickHandler(void)
 	gNextTimeslice = true;
 	if ((gGlobalSysTickCounter % 50) == 0) {
 		gNextTimeslice500ms = true;
-		if (gTxTimerCountdown) {
-			gTxTimerCountdown--;
-			if (gTxTimerCountdown == 0) {
-				gTxTimeoutReached = true;
-			}
-		}
+		DECREMENT_AND_TRIGGER(gTxTimerCountdown, gTxTimeoutReached);
 	}
 	if ((gGlobalSysTickCounter & 3) == 0) {
 		gNextTimeslice40ms = true;
@@ -49,81 +55,46 @@ void SystickHandler(void)
 	if (gFoundCTCSSCountdown) {
 		gFoundCTCSSCountdown--;
 	}
-	if (gCurrentFunction == FUNCTION_0 && gBatterySaveCountdown) {
-		gBatterySaveCountdown--;
-		if (gBatterySaveCountdown == 0) {
-			gSchedulePowerSave = true;
-		}
+	if (gCurrentFunction == FUNCTION_FOREGROUND) {
+		DECREMENT_AND_TRIGGER(gBatterySaveCountdown, gSchedulePowerSave);
 	}
-	if (gCurrentFunction == FUNCTION_POWER_SAVE && gBatterySave) {
-		gBatterySave--;
-		if (gBatterySave == 0) {
-			gBatterySaveCountdownExpired = true;
-		}
+	if (gCurrentFunction == FUNCTION_POWER_SAVE) {
+		DECREMENT_AND_TRIGGER(gBatterySave, gBatterySaveCountdownExpired);
 	}
-	if (gStepDirection == 0 && g_20000381 == 0 && gEeprom.DUAL_WATCH != DUAL_WATCH_OFF) {
+
+	if (gScanState == SCAN_OFF && gCssScanMode == CSS_SCAN_MODE_OFF && gEeprom.DUAL_WATCH != DUAL_WATCH_OFF) {
 		if (gCurrentFunction != FUNCTION_MONITOR && gCurrentFunction != FUNCTION_TRANSMIT) {
 			if (gCurrentFunction != FUNCTION_RECEIVE) {
-				if (g_2000033A) {
-					g_2000033A--;
-					if (g_2000033A == 0) {
-						gSystickFlag7 = true;
-					}
-				}
+				DECREMENT_AND_TRIGGER(gDualWatchCountdown, gScheduleDualWatch);
 			}
 		}
 	}
 
-	if (gStepDirection == 0 && g_20000381 == 0 && gEeprom.DUAL_WATCH == DUAL_WATCH_OFF) {
+	if (gScanState == SCAN_OFF && gCssScanMode == CSS_SCAN_MODE_OFF && gEeprom.DUAL_WATCH == DUAL_WATCH_OFF) {
 		if (gIsNoaaMode && gCurrentFunction != FUNCTION_MONITOR && gCurrentFunction != FUNCTION_TRANSMIT) {
 			if (gCurrentFunction != FUNCTION_RECEIVE) {
-				if (gNOAA_Countdown) {
-					gNOAA_Countdown--;
-					if (gNOAA_Countdown == 0) {
-						gScheduleNOAA = true;
-					}
-				}
+				DECREMENT_AND_TRIGGER(gNOAA_Countdown, gScheduleNOAA);
 			}
 		}
 	}
 
-	if (gStepDirection || g_20000381 == 1) {
+	if (gScanState != SCAN_OFF || gCssScanMode == CSS_SCAN_MODE_SCANNING) {
 		if (gCurrentFunction != FUNCTION_MONITOR && gCurrentFunction != FUNCTION_TRANSMIT) {
-			if (ScanPauseDelayIn10msec) {
-				ScanPauseDelayIn10msec--;
-				if (ScanPauseDelayIn10msec == 0) {
-					gSystickFlag9 = true;
-				}
-			}
+			DECREMENT_AND_TRIGGER(ScanPauseDelayIn10msec, gScheduleScanListen);
 		}
 	}
 
-	if (g_20000342) {
-		g_20000342--;
-		if (g_20000342 == 0) {
-			gSystickFlag10 = true;
-		}
-	}
+	DECREMENT_AND_TRIGGER(gTailNoteEliminationCountdown, gSystickFlag10);
 
-	if (gCountdownToPlayNextVoice) {
-		gCountdownToPlayNextVoice--;
-		if (gCountdownToPlayNextVoice == 0) {
-			gFlagPlayQueuedVoice = true;
-		}
-	}
+	DECREMENT_AND_TRIGGER(gCountdownToPlayNextVoice, gFlagPlayQueuedVoice);
 
-	if (gFM_Step && gCurrentFunction != FUNCTION_MONITOR) {
+	if (gFM_ScanState != FM_SCAN_OFF && gCurrentFunction != FUNCTION_MONITOR) {
 		if (gCurrentFunction != FUNCTION_TRANSMIT && gCurrentFunction != FUNCTION_RECEIVE) {
-			if (gFmPlayCountdown) {
-				gFmPlayCountdown--;
-				if (gFmPlayCountdown == 0) {
-					gScheduleFM = true;
-				}
-			}
+			DECREMENT_AND_TRIGGER(gFmPlayCountdown, gScheduleFM);
 		}
 	}
-	if (gSystickCountdown11) {
-		gSystickCountdown11--;
+	if (gVoxStopCountdown) {
+		gVoxStopCountdown--;
 	}
 }
 

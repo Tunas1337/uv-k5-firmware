@@ -14,20 +14,12 @@
  *     limitations under the License.
  */
 
-#ifndef BOARD_H
-#define BOARD_H
+#ifndef DRIVER_AES_H
+#define DRIVER_AES_H
 
 #include <stdint.h>
 
-void BOARD_FLASH_Init(void);
-void BOARD_GPIO_Init(void);
-void BOARD_PORTCON_Init(void);
-void BOARD_ADC_Init(void);
-void BOARD_ADC_GetBatteryInfo(uint16_t *pVoltage, uint16_t *pCurrent);
-void BOARD_Init(void);
-void BOARD_EEPROM_Init(void);
-void BOARD_EEPROM_LoadMoreSettings(void);
-void BOARD_FactoryReset(bool bIsAll);
+void AES_Encrypt(const void *pKey, const void *pIv, const void *pIn, void *pOut, uint8_t NumBlocks);
 
 #endif
 

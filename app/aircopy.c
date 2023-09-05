@@ -48,7 +48,7 @@ void AIRCOPY_SendMessage(void)
 	if (++gAirCopyBlockNumber >= 0x78) {
 		gAircopyState = AIRCOPY_COMPLETE;
 	}
-	RADIO_PrepareTransmit();
+	RADIO_SetTxParameters();
 	BK4819_SendFSKData(g_FSK_Buffer);
 	BK4819_SetupPowerAmplifier(0, 0);
 	BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1, false);
@@ -100,7 +100,7 @@ void AIRCOPY_StorePacket(void)
 	gErrorsDuringAirCopy++;
 }
 
-void AIRCOPY_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
+static void AIRCOPY_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
 	if (!bKeyHeld && bKeyPressed) {
 		uint32_t Frequency;
@@ -117,13 +117,13 @@ void AIRCOPY_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		for (i = 0; i < 7; i++) {
 			if (Frequency >= gLowerLimitFrequencyBandTable[i] && Frequency <= gUpperLimitFrequencyBandTable[i]) {
 				gAnotherVoiceID = (VOICE_ID_t)Key;
-				gRxInfo->Band = i;
+				gRxVfo->Band = i;
 				Frequency += 75;
-				Frequency = FREQUENCY_FloorToStep(Frequency, gRxInfo->StepFrequency, 0);
-				gRxInfo->ConfigRX.Frequency = Frequency;
-				gRxInfo->ConfigTX.Frequency = Frequency;
-				RADIO_ConfigureSquelchAndOutputPower(gRxInfo);
-				gCrossTxRadioInfo = gRxInfo;
+				Frequency = FREQUENCY_FloorToStep(Frequency, gRxVfo->StepFrequency, 0);
+				gRxVfo->ConfigRX.Frequency = Frequency;
+				gRxVfo->ConfigTX.Frequency = Frequency;
+				RADIO_ConfigureSquelchAndOutputPower(gRxVfo);
+				gCurrentVfo = gRxVfo;
 				RADIO_SetupRegisters(true);
 				BK4819_SetupAircopy();
 				BK4819_ResetFSK();
@@ -134,7 +134,7 @@ void AIRCOPY_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 	}
 }
 
-void AIRCOPY_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
+static void AIRCOPY_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 {
 	if (!bKeyHeld && bKeyPressed) {
 		if (gInputBoxIndex == 0) {
@@ -153,7 +153,7 @@ void AIRCOPY_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 	}
 }
 
-void AIRCOPY_Key_MENU(bool bKeyPressed, bool bKeyHeld)
+static void AIRCOPY_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 {
 	if (!bKeyHeld && bKeyPressed) {
 		gFSKWriteIndex = 0;
@@ -166,6 +166,25 @@ void AIRCOPY_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 		AIRCOPY_SendMessage();
 		GUI_DisplayScreen();
 		gAircopyState = AIRCOPY_TRANSFER;
+	}
+}
+
+void AIRCOPY_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
+{
+	switch (Key) {
+	case KEY_0: case KEY_1: case KEY_2: case KEY_3:
+	case KEY_4: case KEY_5: case KEY_6: case KEY_7:
+	case KEY_8: case KEY_9:
+		AIRCOPY_Key_DIGITS(Key, bKeyPressed, bKeyHeld);
+		break;
+	case KEY_MENU:
+		AIRCOPY_Key_MENU(bKeyPressed, bKeyHeld);
+		break;
+	case KEY_EXIT:
+		AIRCOPY_Key_EXIT(bKeyPressed, bKeyHeld);
+		break;
+	default:
+		break;
 	}
 }
 

@@ -28,7 +28,7 @@ static const uint16_t FSK_RogerTable[7] = {
 
 static uint16_t gBK4819_GpioOutState;
 
-bool gThisCanEnable_BK4819_Rxon;
+bool gRxIdleMode;
 
 void BK4819_Init(void)
 {
@@ -238,11 +238,11 @@ void BK4819_SetCDCSSCodeWord(uint32_t CodeWord)
 	BK4819_WriteRegister(BK4819_REG_08, 0x8000 | ((CodeWord >> 12) & 0xFFF));
 }
 
-void BK4819_SetCTCSSBaudRate(uint32_t BaudRate)
+void BK4819_SetCTCSSFrequency(uint32_t FreqControlWord)
 {
 	uint16_t Config;
 
-	if (BaudRate == 2625) {
+	if (FreqControlWord == 2625) { // Enables 1050Hz detection mode
 		// Enable TxCTCSS
 		// CTCSS Mode
 		// 1050/4 Detect Enable
@@ -262,7 +262,7 @@ void BK4819_SetCTCSSBaudRate(uint32_t BaudRate)
 	// CTC1 Frequency Control Word
 	BK4819_WriteRegister(BK4819_REG_07, 0
 			| BK4819_REG_07_MODE_CTC1
-			| ((BaudRate * 2065) / 1000) << BK4819_REG_07_SHIFT_FREQUENCY);
+			| ((FreqControlWord * 2065) / 1000) << BK4819_REG_07_SHIFT_FREQUENCY);
 }
 
 void BK4819_Set55HzTailDetection(void)
@@ -271,19 +271,22 @@ void BK4819_Set55HzTailDetection(void)
 	BK4819_WriteRegister(BK4819_REG_07, (1U << 13) | 462);
 }
 
-void BK4819_EnableVox(uint16_t Vox1Threshold, uint16_t Vox0Threshold)
+void BK4819_EnableVox(uint16_t VoxEnableThreshold, uint16_t VoxDisableThreshold)
 {
-	uint16_t Value;
+	//VOX Algorithm
+	//if(voxamp>VoxEnableThreshold)       VOX = 1;
+	//else if(voxamp<VoxDisableThreshold) (After Delay) VOX = 0;
+	uint16_t REG_31_Value;
 
-	Value = BK4819_GetRegister(BK4819_REG_31);
+	REG_31_Value = BK4819_GetRegister(BK4819_REG_31);
 	// 0xA000 is undocumented?
-	BK4819_WriteRegister(BK4819_REG_46, 0xA000 | (Vox1Threshold & 0x07FF));
+	BK4819_WriteRegister(BK4819_REG_46, 0xA000 | (VoxEnableThreshold & 0x07FF));
 	// 0x1800 is undocumented?
-	BK4819_WriteRegister(BK4819_REG_79, 0x1800 | (Vox0Threshold & 0x07FF));
-	// Bottom 12 bits are undocumented?
-	BK4819_WriteRegister(BK4819_REG_7A, 0x289A);
+	BK4819_WriteRegister(BK4819_REG_79, 0x1800 | (VoxDisableThreshold & 0x07FF));
+	// Bottom 12 bits are undocumented, 15:12 vox disable delay *128ms
+	BK4819_WriteRegister(BK4819_REG_7A, 0x289A); // vox disable delay = 128*5 = 640ms
 	// Enable VOX
-	BK4819_WriteRegister(BK4819_REG_31, Value | 4);
+	BK4819_WriteRegister(BK4819_REG_31, REG_31_Value | 4); //bit 2 - VOX Enable
 }
 
 void BK4819_SetFilterBandwidth(BK4819_FilterBandwidth_t Bandwidth)
@@ -490,17 +493,18 @@ void BK4819_TurnsOffTones_TurnsOnRX(void)
 
 void BK4819_SetupAircopy(void)
 {
-	BK4819_WriteRegister(BK4819_REG_70, 0x00E0);
-	BK4819_WriteRegister(BK4819_REG_72, 0x3065);
-	BK4819_WriteRegister(BK4819_REG_58, 0x00C1);
-	BK4819_WriteRegister(BK4819_REG_5C, 0x5665);
-	BK4819_WriteRegister(BK4819_REG_5D, 0x4700);
+	BK4819_WriteRegister(BK4819_REG_70, 0x00E0); // Enable Tone2, tuning gain 48
+	BK4819_WriteRegister(BK4819_REG_72, 0x3065); // Tone2 baudrate 1200
+	BK4819_WriteRegister(BK4819_REG_58, 0x00C1); // FSK Enable, FSK 1.2K RX Bandwidth, Preamble 0xAA or 0x55, RX Gain 0, RX Mode
+                    							 // (FSK1.2K, FSK2.4K Rx and NOAA SAME Rx), TX Mode FSK 1.2K and FSK 2.4K Tx
+	BK4819_WriteRegister(BK4819_REG_5C, 0x5665); // Enable CRC among other things we don't know yet
+	BK4819_WriteRegister(BK4819_REG_5D, 0x4700); // FSK Data Length 72 Bytes (0xabcd + 2 byte length + 64 byte payload + 2 byte CRC + 0xdcba)
 }
 
 void BK4819_ResetFSK(void)
 {
-	BK4819_WriteRegister(BK4819_REG_3F, 0x0000);
-	BK4819_WriteRegister(BK4819_REG_59, 0x0068);
+	BK4819_WriteRegister(BK4819_REG_3F, 0x0000); // Disable interrupts
+	BK4819_WriteRegister(BK4819_REG_59, 0x0068); // Sync length 4 bytes, 7 byte preamble
 	SYSTEM_DelayMs(30);
 	BK4819_Idle();
 }
@@ -538,7 +542,7 @@ void BK4819_ExitSubAu(void)
 
 void BK4819_Conditional_RX_TurnOn_and_GPIO6_Enable(void)
 {
-	if (gThisCanEnable_BK4819_Rxon) {
+	if (gRxIdleMode) {
 		BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2, true);
 		BK4819_RX_TurnOn();
 	}
@@ -661,7 +665,7 @@ void BK4819_PlayDTMF(char Code)
 	}
 }
 
-void BK4819_PlayDTMFString(char *pString, bool bDelayFirst, uint16_t FirstCodePersistTime, uint16_t HashCodePersistTime, uint16_t CodePersistTime, uint16_t CodeInternalTime)
+void BK4819_PlayDTMFString(const char *pString, bool bDelayFirst, uint16_t FirstCodePersistTime, uint16_t HashCodePersistTime, uint16_t CodePersistTime, uint16_t CodeInternalTime)
 {
 	uint8_t i;
 	uint16_t Delay;
@@ -903,21 +907,23 @@ void BK4819_PlayRogerMDC(void)
 	uint8_t i;
 
 	BK4819_SetAF(BK4819_AF_MUTE);
-	BK4819_WriteRegister(BK4819_REG_58, 0x37C3);
-	BK4819_WriteRegister(BK4819_REG_72, 0x3065);
-	BK4819_WriteRegister(BK4819_REG_70, 0x00E0);
-	BK4819_WriteRegister(BK4819_REG_5D, 0x0D00);
-	BK4819_WriteRegister(BK4819_REG_59, 0x8068);
-	BK4819_WriteRegister(BK4819_REG_59, 0x0068);
-	BK4819_WriteRegister(BK4819_REG_5A, 0x5555);
-	BK4819_WriteRegister(BK4819_REG_5B, 0x55AA);
-	BK4819_WriteRegister(BK4819_REG_5C, 0xAA30);
+	BK4819_WriteRegister(BK4819_REG_58, 0x37C3); // FSK Enable, RX Bandwidth FFSK1200/1800, 0xAA or 0x55 Preamble, 11 RX Gain,
+    											 // 101 RX Mode, FFSK1200/1800 TX
+	BK4819_WriteRegister(BK4819_REG_72, 0x3065); // Set Tone2 to 1200Hz
+	BK4819_WriteRegister(BK4819_REG_70, 0x00E0); // Enable Tone2 and Set Tone2 Gain
+	BK4819_WriteRegister(BK4819_REG_5D, 0x0D00); // Set FSK data length to 13 bytes
+	BK4819_WriteRegister(BK4819_REG_59, 0x8068); // 4 byte sync length, 6 byte preamble, clear TX FIFO
+	BK4819_WriteRegister(BK4819_REG_59, 0x0068); // Same, but clear TX FIFO is now unset (clearing done)
+	BK4819_WriteRegister(BK4819_REG_5A, 0x5555); // First two sync bytes
+	BK4819_WriteRegister(BK4819_REG_5B, 0x55AA); // End of sync bytes. Total 4 bytes: 555555aa
+	BK4819_WriteRegister(BK4819_REG_5C, 0xAA30); // Disable CRC
 	for (i = 0; i < 7; i++) {
-		BK4819_WriteRegister(BK4819_REG_5F, FSK_RogerTable[i]);
+		BK4819_WriteRegister(BK4819_REG_5F, FSK_RogerTable[i]); // Send the data from the roger table
 	}
 	SYSTEM_DelayMs(20);
-	BK4819_WriteRegister(BK4819_REG_59, 0x0868);
+	BK4819_WriteRegister(BK4819_REG_59, 0x0868); // 4 sync bytes, 6 byte preamble, Enable FSK TX
 	SYSTEM_DelayMs(180);
+	// Stop FSK TX, reset Tone2, disable FSK.
 	BK4819_WriteRegister(BK4819_REG_59, 0x0068);
 	BK4819_WriteRegister(BK4819_REG_70, 0x0000);
 	BK4819_WriteRegister(BK4819_REG_58, 0x0000);

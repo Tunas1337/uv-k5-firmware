@@ -1,7 +1,4 @@
 TARGET = firmware
-OVERLAY = sram-overlay
-BLOB_OVERLAY = blob-overlay
-LINK_OVERLAY = link-overlay
 
 BSP_DEFINITIONS := $(wildcard hardware/*/*.def)
 BSP_HEADERS := $(patsubst hardware/%,bsp/%,$(BSP_DEFINITIONS))
@@ -11,13 +8,12 @@ OBJS =
 # Startup files
 OBJS += start.o
 OBJS += init.o
-OBJS += overlay.o
-OBJS += $(LINK_OVERLAY).o
-OBJS += $(BLOB_OVERLAY).o
+OBJS += sram-overlay.o
 OBJS += external/printf/printf.o
 
 # Drivers
 OBJS += driver/adc.o
+OBJS += driver/aes.o
 OBJS += driver/backlight.o
 OBJS += driver/bk1080.o
 OBJS += driver/bk4819.o
@@ -34,6 +30,7 @@ OBJS += driver/systick.o
 OBJS += driver/uart.o
 
 # Main
+OBJS += app/action.o
 OBJS += app/aircopy.o
 OBJS += app/app.o
 OBJS += app/dtmf.o
@@ -42,6 +39,7 @@ OBJS += app/generic.o
 OBJS += app/main.o
 OBJS += app/menu.o
 OBJS += app/scanner.o
+OBJS += app/uart.o
 OBJS += audio.o
 OBJS += bitmaps.o
 OBJS += board.o
@@ -68,10 +66,15 @@ OBJS += ui/scanner.o
 OBJS += ui/status.o
 OBJS += ui/ui.o
 OBJS += ui/welcome.o
+OBJS += version.o
 
 OBJS += main.o
 
+ifeq ($(OS),Windows_NT)
+TOP := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+else
 TOP := $(shell pwd)
+endif
 
 AS = arm-none-eabi-as
 CC = arm-none-eabi-gcc
@@ -79,14 +82,13 @@ LD = arm-none-eabi-gcc
 OBJCOPY = arm-none-eabi-objcopy
 SIZE = arm-none-eabi-size
 
-ASFLAGS = -mcpu=cortex-m0
-CFLAGS = -Os -Wall -Werror -mcpu=cortex-m0 -fno-builtin -fshort-enums -std=c11 -MMD
-CFLAGS += -DPRINTF_INCLUDE_CONFIG_H
-LDFLAGS = -mcpu=cortex-m0 -nostartfiles -Wl,-T,firmware.ld
+GIT_HASH := $(shell git rev-parse --short HEAD)
 
-OVERLAY_CFLAGS = $(CFLAGS) -fno-inline -fno-toplevel-reorder
-OVERLAY_LD = arm-none-eabi-ld
-OVERLAY_LDFLAGS = -T $(OVERLAY).ld -S
+ASFLAGS = -mcpu=cortex-m0
+CFLAGS = -Os -Wall -Werror -mcpu=cortex-m0 -fno-builtin -fshort-enums -fno-delete-null-pointer-checks -std=c11 -MMD
+CFLAGS += -DPRINTF_INCLUDE_CONFIG_H
+CFLAGS += -DGIT_HASH=\"$(GIT_HASH)\"
+LDFLAGS = -mcpu=cortex-m0 -nostartfiles -Wl,-T,firmware.ld
 
 ifeq ($(DEBUG),1)
 ASFLAGS += -g
@@ -105,6 +107,8 @@ DEPS = $(OBJS:.o=.d)
 
 all: $(TARGET)
 	$(OBJCOPY) -O binary $< $<.bin
+	-python fw-pack.py $<.bin $(GIT_HASH) $<.packed.bin
+	-python3 fw-pack.py $<.bin $(GIT_HASH) $<.packed.bin
 	$(SIZE) $<
 
 debug:
@@ -113,22 +117,7 @@ debug:
 flash:
 	/opt/openocd/bin/openocd -c "bindto 0.0.0.0" -f interface/jlink.cfg -f dp32g030.cfg -c "write_image firmware.bin 0; shutdown;"
 
-$(OVERLAY).bin: $(OVERLAY)
-	$(OBJCOPY) -O binary $< $@
-
-$(OVERLAY): $(OVERLAY).o
-	$(OVERLAY_LD) $(OVERLAY_LDFLAGS) $< -o $@
-
-$(OVERLAY).o: $(OVERLAY).c
-	$(CC) $(OVERLAY_CFLAGS) $(INC) -c $< -o $@
-
-$(LINK_OVERLAY).o: $(LINK_OVERLAY).S
-	$(AS) $(ASFLAGS) $< -o $@
-
-$(LINK_OVERLAY).S: $(OVERLAY)
-	./gen-overlay-symbols.sh $< $@
-
-$(BLOB_OVERLAY).S: $(OVERLAY).bin
+version.o: .FORCE
 
 $(TARGET): $(OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@ $(LIBS)
@@ -141,8 +130,10 @@ bsp/dp32g030/%.h: hardware/dp32g030/%.def
 %.o: %.S
 	$(AS) $(ASFLAGS) $< -o $@
 
+.FORCE:
+
 -include $(DEPS)
 
 clean:
-	rm -f $(TARGET).bin $(TARGET) $(OBJS) $(DEPS) $(OVERLAY).bin $(OVERLAY) $(OVERLAY).o $(OVERLAY).d $(LINK_OVERLAY).o $(LINK_OVERLAY).S $(BLOB_OVERLAY).o
+	rm -f $(TARGET).bin $(TARGET) $(OBJS) $(DEPS)
 

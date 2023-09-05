@@ -58,6 +58,18 @@ enum STEP_Setting_t {
 
 typedef enum STEP_Setting_t STEP_Setting_t;
 
+enum VfoState_t {
+	VFO_STATE_NORMAL     = 0U,
+	VFO_STATE_BUSY       = 1U,
+	VFO_STATE_BAT_LOW    = 2U,
+	VFO_STATE_TX_DISABLE = 3U,
+	VFO_STATE_TIMEOUT    = 4U,
+	VFO_STATE_ALARM      = 5U,
+	VFO_STATE_VOL_HIGH   = 6U,
+};
+
+typedef enum VfoState_t VfoState_t;
+
 typedef struct {
 	uint32_t Frequency;
 	DCS_CodeType_t CodeType;
@@ -97,9 +109,9 @@ typedef struct VFO_Info_t {
 	char Name[16];
 } VFO_Info_t;
 
-extern VFO_Info_t *gTxInfo;
-extern VFO_Info_t *gRxInfo;
-extern VFO_Info_t *gCrossTxRadioInfo;
+extern VFO_Info_t *gTxVfo;
+extern VFO_Info_t *gRxVfo;
+extern VFO_Info_t *gCurrentVfo;
 
 extern DCS_CodeType_t gCodeType;
 extern DCS_CodeType_t gCopyOfCodeType;
@@ -107,23 +119,24 @@ extern uint8_t gCode;
 
 extern STEP_Setting_t gStepSetting;
 
+extern VfoState_t VfoState[2];
+
 bool RADIO_CheckValidChannel(uint16_t ChNum, bool bCheckScanList, uint8_t RadioNum);
 uint8_t RADIO_FindNextChannel(uint8_t ChNum, int8_t Direction, bool bCheckScanList, uint8_t RadioNum);
 void RADIO_InitInfo(VFO_Info_t *pInfo, uint8_t ChannelSave, uint8_t ChIndex, uint32_t Frequency);
 void RADIO_ConfigureChannel(uint8_t RadioNum, uint32_t Arg);
 void RADIO_ConfigureSquelchAndOutputPower(VFO_Info_t *pInfo);
 void RADIO_ApplyOffset(VFO_Info_t *pInfo);
-void RADIO_ConfigureTX(void);
-void RADIO_ConfigureCrossTX(void);
+void RADIO_SelectVfos(void);
 void RADIO_SetupRegisters(bool bSwitchToFunction0);
 void RADIO_ConfigureNOAA(void);
-void RADIO_PrepareTransmit(void);
+void RADIO_SetTxParameters(void);
 
-void RADIO_SomethingElse(uint8_t Arg);
-void RADIO_SomethingWithTransmit(void);
+void RADIO_SetVfoState(VfoState_t State);
+void RADIO_PrepareTX(void);
 void RADIO_EnableCxCSS(void);
-void RADIO_Something(void);
-void RADIO_Whatever(void);
+void RADIO_PrepareCssTX(void);
+void RADIO_StopCssScan(void);
 void RADIO_SendEndOfTransmission(void);
 
 #endif
