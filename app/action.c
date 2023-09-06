@@ -161,7 +161,7 @@ void ACTION_FM(void)
 		if (gFmRadioMode) {
 			FM_TurnOff();
 			gInputBoxIndex = 0;
-			g_200003B6 = 80;
+			gVoxResumeCountdown = 80;
 			gFlagReconfigureVfos = true;
 			gRequestDisplayScreen = DISPLAY_MAIN;
 			return;
