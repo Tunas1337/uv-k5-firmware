@@ -31,6 +31,7 @@
 #include "settings.h"
 #include "sram-overlay.h"
 #include "version.h"
+#include "aircopy.h"
 
 #define DMA_INDEX(x, y) (((x) + (y)) % sizeof(UART_DMA_Buffer))
 
@@ -48,6 +49,12 @@ typedef struct {
 	Header_t Header;
 	uint32_t Timestamp;
 } CMD_0514_t;
+
+typedef struct {
+	Header_t Header;
+	uint8_t Content[36];
+	uint32_t Timestamp;
+} CMD_0501_t;
 
 typedef struct {
 	Header_t Header;
@@ -217,6 +224,16 @@ static void CMD_0514(const uint8_t *pBuffer)
 	gFmRadioCountdown = 4;
 	GPIO_ClearBit(&GPIOB->DATA, GPIOB_PIN_BACKLIGHT);
 	SendVersion();
+}
+
+static void CMD_0501(const uint8_t *pBuffer)
+{
+	const CMD_0501_t *pCmd = (const CMD_0501_t *)pBuffer;
+
+	Timestamp = pCmd->Timestamp;
+	gFmRadioCountdown = 4;
+	GPIO_ClearBit(&GPIOB->DATA, GPIOB_PIN_BACKLIGHT);
+	FSK_SendMessage(pCmd->Content, pCmd->Header.Size - 4);
 }
 
 static void CMD_051B(const uint8_t *pBuffer)
@@ -473,6 +490,9 @@ bool UART_IsCommandAvailable(void)
 void UART_HandleCommand(void)
 {
 	switch (UART_Command.Header.ID) {
+	case 0x0501:
+		CMD_0501(UART_Command.Buffer);
+		break;
 	case 0x0514:
 		CMD_0514(UART_Command.Buffer);
 		break;

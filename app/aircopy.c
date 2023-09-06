@@ -58,6 +58,19 @@ void AIRCOPY_SendMessage(void)
 	gAircopySendCountdown = 30;
 }
 
+void FSK_SendMessage(const uint8_t *pData, uint8_t Length)
+{
+	RADIO_SetTxParameters();
+	// convert pData to 16-bit output buffer, to be sent via BK4819_SendFSKData
+	uint16_t outputBuffer[36];
+	for (int i = 0; i < Length; i++) {
+		outputBuffer[i] = pData[i];
+	}
+	BK4819_SendFSKData(outputBuffer);
+	BK4819_SetupPowerAmplifier(0, 0);
+	BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1, false);
+}
+
 void AIRCOPY_StorePacket(void)
 {
 	uint16_t Status;
