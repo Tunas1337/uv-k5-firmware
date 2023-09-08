@@ -80,8 +80,8 @@ typedef struct {
 typedef struct VFO_Info_t {
 	FREQ_Config_t ConfigRX;
 	FREQ_Config_t ConfigTX;
-	FREQ_Config_t *pCurrent;
-	FREQ_Config_t *pReverse;
+	FREQ_Config_t *pRX;
+	FREQ_Config_t *pTX;
 	uint32_t FREQUENCY_OF_DEVIATION;
 	uint16_t StepFrequency;
 	uint8_t CHANNEL_SAVE;
@@ -113,9 +113,9 @@ extern VFO_Info_t *gTxVfo;
 extern VFO_Info_t *gRxVfo;
 extern VFO_Info_t *gCurrentVfo;
 
-extern DCS_CodeType_t gCodeType;
-extern DCS_CodeType_t gCopyOfCodeType;
-extern uint8_t gCode;
+extern DCS_CodeType_t gCurrentCodeType;
+extern DCS_CodeType_t gSelectedCodeType;
+extern uint8_t gSelectedCode;
 
 extern STEP_Setting_t gStepSetting;
 
@@ -136,7 +136,6 @@ void RADIO_SetVfoState(VfoState_t State);
 void RADIO_PrepareTX(void);
 void RADIO_EnableCxCSS(void);
 void RADIO_PrepareCssTX(void);
-void RADIO_StopCssScan(void);
 void RADIO_SendEndOfTransmission(void);
 
 #endif
