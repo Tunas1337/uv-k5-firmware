@@ -72,9 +72,6 @@ enum CssScanMode_t {
 
 typedef enum CssScanMode_t CssScanMode_t;
 
-extern const uint32_t *gUpperLimitFrequencyBandTable;
-extern const uint32_t *gLowerLimitFrequencyBandTable;
-
 extern bool gSetting_350TX;
 extern bool gSetting_KILLED;
 extern bool gSetting_200TX;
@@ -192,7 +189,7 @@ extern volatile bool gSchedulePowerSave;
 extern volatile bool gBatterySaveCountdownExpired;
 extern volatile bool gScheduleDualWatch;
 extern volatile bool gScheduleNOAA;
-extern volatile bool gSystickFlag10;
+extern volatile bool gFlagTteComplete;
 extern volatile bool gScheduleFM;
 
 extern uint16_t gCurrentRSSI;

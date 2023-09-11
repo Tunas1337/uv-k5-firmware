@@ -38,6 +38,14 @@
 #include "settings.h"
 #include "sram-overlay.h"
 
+static const uint32_t gDefaultFrequencyTable[5] = {
+	14502500,
+	14552500,
+	43477500,
+	43502500,
+	43697500,
+};
+
 void BOARD_FLASH_Init(void)
 {
 	FLASH_Init(FLASH_READ_MODE_1_CYCLE);
@@ -411,7 +419,7 @@ void BOARD_EEPROM_Init(void)
 	gEeprom.KEY_2_LONG_PRESS_ACTION  = (Data[4] < 9) ? Data[4] : 6;
 	gEeprom.SCAN_RESUME_MODE         = (Data[5] < 3) ? Data[5] : SCAN_RESUME_CO;
 	gEeprom.AUTO_KEYPAD_LOCK         = (Data[6] < 2) ? Data[6] : true;
-	gEeprom.POWER_ON_DISPLAY_MODE    = (Data[7] < 3) ? Data[7] : POWER_ON_DISPLAY_MODE_MESSAGE;
+	gEeprom.POWER_ON_DISPLAY_MODE    = (Data[7] < 3) ? Data[7] : POWER_ON_DISPLAY_MODE_VOLTAGE;
 
 	// 0E98..0E9F
 	EEPROM_ReadBuffer(0x0E98, Data, 8);
@@ -502,9 +510,6 @@ void BOARD_EEPROM_Init(void)
 	EEPROM_ReadBuffer(0x0F40, Data, 8);
 	gSetting_F_LOCK         = (Data[0] < 6) ? Data[0] : F_LOCK_OFF;
 
-	gUpperLimitFrequencyBandTable = UpperLimitFrequencyBandTable;
-	gLowerLimitFrequencyBandTable = LowerLimitFrequencyBandTable;
-
 	gSetting_350TX          = (Data[1] < 2) ? Data[1] : true;
 	gSetting_KILLED         = (Data[2] < 2) ? Data[2] : false;
 	gSetting_200TX          = (Data[3] < 2) ? Data[3] : false;
@@ -557,7 +562,7 @@ void BOARD_EEPROM_LoadMoreSettings(void)
 	EEPROM_ReadBuffer(0x1F68 + (gEeprom.VOX_LEVEL * 2), &gEeprom.VOX0_THRESHOLD, 2);
 
 	EEPROM_ReadBuffer(0x1F80 + gEeprom.MIC_SENSITIVITY, &Mic, 1);
-	gEeprom.MIC_SENSITIVITY_TUNING = (Mic >= 32) ? Mic : 15;
+	gEeprom.MIC_SENSITIVITY_TUNING = (Mic < 32) ? Mic : 15;
 
 	struct {
 		int16_t BK4819_XtalFreqLow;
@@ -600,6 +605,17 @@ void BOARD_FactoryReset(bool bIsAll)
 				!(i >= 0x0E88 && i < 0x0E90))) // FM settings
 			) {
 			EEPROM_WriteBuffer(i, Template);
+		}
+	}
+	if (bIsAll) {
+		RADIO_InitInfo(gRxVfo, FREQ_CHANNEL_FIRST + 5, 5, 41002500);
+		for (i = 0; i < 5; i++) {
+			const uint32_t Frequency = gDefaultFrequencyTable[i];
+
+			gRxVfo->ConfigRX.Frequency = Frequency;
+			gRxVfo->ConfigTX.Frequency = Frequency;
+			gRxVfo->Band = FREQUENCY_GetBand(Frequency);
+			SETTINGS_SaveChannel(MR_CHANNEL_FIRST + i, 0, gRxVfo, 2);
 		}
 	}
 }

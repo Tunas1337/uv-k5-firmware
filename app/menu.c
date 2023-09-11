@@ -94,14 +94,20 @@ static const VOICE_ID_t MenuVoices[] = {
 	VOICE_ID_INVALID,
 };
 
-static void FUN_000074f8(int8_t Direction)
+void MENU_StartCssScan(int8_t Direction)
 {
 	gCssScanMode = CSS_SCAN_MODE_SCANNING;
 	gMenuScrollDirection = Direction;
 	RADIO_SelectVfos();
-	MENU_SelectNextDCS();
+	MENU_SelectNextCode();
 	ScanPauseDelayIn10msec = 50;
 	gScheduleScanListen = false;
+}
+
+void MENU_StopCssScan(void)
+{
+	gCssScanMode = CSS_SCAN_MODE_OFF;
+	RADIO_SetupRegisters(true);
 }
 
 // Defines the range of options in each menu item's submenu
@@ -519,7 +525,7 @@ void MENU_AcceptSetting(void)
 	gRequestSaveSettings = true;
 }
 
-void MENU_SelectNextDCS(void)
+void MENU_SelectNextCode(void)
 {
 	uint8_t UpperLimit;
 
@@ -534,21 +540,21 @@ void MENU_SelectNextDCS(void)
 	gSubMenuSelection = NUMBER_AddWithWraparound(gSubMenuSelection, gMenuScrollDirection, 1, UpperLimit);
 	if (gMenuCursor == MENU_R_DCS) {
 		if (gSubMenuSelection > 104) {
-			gCodeType = CODE_TYPE_REVERSE_DIGITAL;
-			gCode = gSubMenuSelection - 105;
+			gSelectedCodeType = CODE_TYPE_REVERSE_DIGITAL;
+			gSelectedCode = gSubMenuSelection - 105;
 		} else {
-			gCodeType = CODE_TYPE_DIGITAL;
-			gCode = gSubMenuSelection - 1;
+			gSelectedCodeType = CODE_TYPE_DIGITAL;
+			gSelectedCode = gSubMenuSelection - 1;
 		}
 
 	} else {
-		gCodeType = CODE_TYPE_CONTINUOUS_TONE;
-		gCode = gSubMenuSelection - 1;
+		gSelectedCodeType = CODE_TYPE_CONTINUOUS_TONE;
+		gSelectedCode = gSubMenuSelection - 1;
 	}
 
 	RADIO_SetupRegisters(true);
 
-	if (gCodeType == CODE_TYPE_CONTINUOUS_TONE) {
+	if (gSelectedCodeType == CODE_TYPE_CONTINUOUS_TONE) {
 		ScanPauseDelayIn10msec = 20;
 	} else {
 		ScanPauseDelayIn10msec = 30;
@@ -949,6 +955,7 @@ static void MENU_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 					gInputBoxIndex = 0;
 					gFlagRefreshSetting = true;
 					gAnotherVoiceID = VOICE_ID_CANCEL;
+					gAskForConfirmation = 0;
 				} else {
 					gInputBoxIndex--;
 					gInputBox[gInputBoxIndex] = 10;
@@ -959,7 +966,7 @@ static void MENU_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 			gAnotherVoiceID = VOICE_ID_CANCEL;
 			gRequestDisplayScreen = DISPLAY_MAIN;
 		} else {
-			RADIO_StopCssScan();
+			MENU_StopCssScan();
 			gAnotherVoiceID = VOICE_ID_SCANNING_STOP;
 			gRequestDisplayScreen = DISPLAY_MENU;
 		}
@@ -1024,12 +1031,12 @@ static void MENU_Key_STAR(bool bKeyPressed, bool bKeyHeld)
 		if (IS_NOT_NOAA_CHANNEL(gRxVfo->CHANNEL_SAVE) && !gRxVfo->IsAM) {
 			if (gMenuCursor == MENU_R_CTCS || gMenuCursor == MENU_R_DCS) {
 				if (gCssScanMode == CSS_SCAN_MODE_OFF) {
-					FUN_000074f8(1);
+					MENU_StartCssScan(1);
 					gRequestDisplayScreen = DISPLAY_MENU;
 					AUDIO_SetVoiceID(0, VOICE_ID_SCANNING_BEGIN);
 					AUDIO_PlaySingleVoice(1);
 				} else {
-					RADIO_StopCssScan();
+					MENU_StopCssScan();
 					gRequestDisplayScreen = DISPLAY_MENU;
 					gAnotherVoiceID = VOICE_ID_SCANNING_STOP;
 				}
@@ -1058,7 +1065,7 @@ static void MENU_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 	}
 
 	if (gCssScanMode != CSS_SCAN_MODE_OFF) {
-		FUN_000074f8(Direction);
+		MENU_StartCssScan(Direction);
 		gPttWasReleased = true;
 		gRequestDisplayScreen = DISPLAY_MENU;
 		return;

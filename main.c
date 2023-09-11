@@ -34,8 +34,7 @@
 #include "settings.h"
 #include "ui/lock.h"
 #include "ui/welcome.h"
-
-static const char Version[] = "UV-K5 Firmware, v0.01 Open Edition\r\n";
+#include "version.h"
 
 void _putchar(char c)
 {
@@ -62,7 +61,7 @@ void Main(void)
 	BOARD_Init();
 
 	UART_Init();
-	UART_Send(Version, sizeof(Version));
+	UART_Send(UART_Version, sizeof(UART_Version));
 
 	// Not implementing authentic device checks
 

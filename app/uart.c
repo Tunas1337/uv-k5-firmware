@@ -301,9 +301,9 @@ static void CMD_0527(void)
 
 	Reply.Header.ID = 0x0528;
 	Reply.Header.Size = sizeof(Reply.Data);
-	Reply.Data.RSSI = BK4819_GetRegister(BK4819_REG_67) & 0x01FF;
-	Reply.Data.ExNoiseIndicator = BK4819_GetRegister(BK4819_REG_65) & 0x007F;
-	Reply.Data.GlitchIndicator = BK4819_GetRegister(BK4819_REG_63);
+	Reply.Data.RSSI = BK4819_ReadRegister(BK4819_REG_67) & 0x01FF;
+	Reply.Data.ExNoiseIndicator = BK4819_ReadRegister(BK4819_REG_65) & 0x007F;
+	Reply.Data.GlitchIndicator = BK4819_ReadRegister(BK4819_REG_63);
 
 	SendReply(&Reply, sizeof(Reply));
 }
@@ -362,8 +362,8 @@ static void CMD_052F(const uint8_t *pBuffer)
 	gEeprom.RX_CHANNEL = 0;
 	gEeprom.DTMF_SIDE_TONE = false;
 	gEeprom.VfoInfo[0].FrequencyReverse = false;
-	gEeprom.VfoInfo[0].pCurrent = &gEeprom.VfoInfo[0].ConfigRX;
-	gEeprom.VfoInfo[0].pReverse = &gEeprom.VfoInfo[0].ConfigTX;
+	gEeprom.VfoInfo[0].pRX = &gEeprom.VfoInfo[0].ConfigRX;
+	gEeprom.VfoInfo[0].pTX = &gEeprom.VfoInfo[0].ConfigTX;
 	gEeprom.VfoInfo[0].FREQUENCY_DEVIATION_SETTING = FREQUENCY_DEVIATION_OFF;
 	gEeprom.VfoInfo[0].DTMF_PTT_ID_TX_MODE = PTT_ID_OFF;
 	gEeprom.VfoInfo[0].DTMF_DECODING_ENABLE = false;

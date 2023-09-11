@@ -26,7 +26,7 @@
 #include "ui/ui.h"
 
 DCS_CodeType_t gScanCssResultType;
-uint8_t gScanCssResultIndex;
+uint8_t gScanCssResultCode;
 bool gFlagStartScan;
 bool gFlagStopScan;
 bool gScanSingleFrequency;
@@ -185,7 +185,7 @@ static void SCANNER_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 			RADIO_InitInfo(gTxVfo, gTxVfo->CHANNEL_SAVE, FREQUENCY_GetBand(gScanFrequency), gScanFrequency);
 			if (gScanUseCssResult) {
 				gTxVfo->ConfigRX.CodeType = gScanCssResultType;
-				gTxVfo->ConfigRX.Code = gScanCssResultIndex;
+				gTxVfo->ConfigRX.Code = gScanCssResultCode;
 			}
 			gTxVfo->ConfigTX = gTxVfo->ConfigRX;
 			gTxVfo->STEP_SETTING = gStepSetting;
@@ -193,9 +193,9 @@ static void SCANNER_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 			RADIO_ConfigureChannel(0, 2);
 			RADIO_ConfigureChannel(1, 2);
 			gTxVfo->ConfigRX.CodeType = gScanCssResultType;
-			gTxVfo->ConfigRX.Code = gScanCssResultIndex;
+			gTxVfo->ConfigRX.Code = gScanCssResultCode;
 			gTxVfo->ConfigTX.CodeType = gScanCssResultType;
-			gTxVfo->ConfigTX.Code = gScanCssResultIndex;
+			gTxVfo->ConfigTX.Code = gScanCssResultCode;
 		}
 
 		if (IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE)) {
@@ -299,7 +299,7 @@ void SCANNER_Start(void)
 	BackupStep = gRxVfo->STEP_SETTING;
 	BackupFrequency = gRxVfo->StepFrequency;
 
-	RADIO_InitInfo(gRxVfo, gRxVfo->CHANNEL_SAVE, gRxVfo->Band, gRxVfo->pCurrent->Frequency);
+	RADIO_InitInfo(gRxVfo, gRxVfo->CHANNEL_SAVE, gRxVfo->Band, gRxVfo->pRX->Frequency);
 
 	gRxVfo->STEP_SETTING = BackupStep;
 	gRxVfo->StepFrequency = BackupFrequency;
@@ -309,7 +309,7 @@ void SCANNER_Start(void)
 	gIsNoaaMode = false;
 	if (gScanSingleFrequency) {
 		gScanCssState = SCAN_CSS_STATE_SCANNING;
-		gScanFrequency = gRxVfo->pCurrent->Frequency;
+		gScanFrequency = gRxVfo->pRX->Frequency;
 		gStepSetting = gRxVfo->STEP_SETTING;
 		BK4819_PickRXFilterPathBasedOnFrequency(gScanFrequency);
 		BK4819_SetScanFrequency(gScanFrequency);
@@ -320,7 +320,7 @@ void SCANNER_Start(void)
 		BK4819_EnableFrequencyScan();
 	}
 	gScanDelay = 21;
-	gScanCssResultIndex = 0xFF;
+	gScanCssResultCode = 0xFF;
 	gScanCssResultType = 0xFF;
 	gScanHitCount = 0;
 	gScanUseCssResult = false;
