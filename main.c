@@ -26,7 +26,9 @@
 #include "driver/gpio.h"
 #include "driver/system.h"
 #include "driver/systick.h"
+#if defined(ENABLE_UART)
 #include "driver/uart.h"
+#endif
 #include "helper/battery.h"
 #include "helper/boot.h"
 #include "misc.h"
@@ -34,11 +36,16 @@
 #include "settings.h"
 #include "ui/lock.h"
 #include "ui/welcome.h"
-#include "version.h"
+
+#if defined(ENABLE_UART)
+static const char Version[] = "UV-K5 Firmware, Open Edition, OEFW-"GIT_HASH"\r\n";
+#endif
 
 void _putchar(char c)
 {
+#if defined(ENABLE_UART)
 	UART_Send((uint8_t *)&c, 1);
+#endif
 }
 
 void Main(void)
@@ -60,8 +67,10 @@ void Main(void)
 	SYSTICK_Init();
 	BOARD_Init();
 
+#if defined(ENABLE_UART)
 	UART_Init();
-	UART_Send(UART_Version, sizeof(UART_Version));
+	UART_Send(Version, sizeof(Version));
+#endif
 
 	// Not implementing authentic device checks
 
