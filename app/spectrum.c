@@ -167,7 +167,7 @@ struct SpectrumSettings {
     bool backlightState;
     BK4819_FilterBandwidth_t listenBw;
     ModulationType modulationType;
-} settings = {STEPS_64, S_STEP_25_0kHz,        80000, 800, 50, false, 0,
+} settings = {STEPS_64, S_STEP_25_0kHz,        80000, 800, 0, false, 0,
               true,     BK4819_FILTER_BW_WIDE, false};
 
 static const uint8_t DrawingEndY = 42;
@@ -565,9 +565,9 @@ static void DrawStatus() {
                 bwOptions[settings.listenBw]);
         GUI_DisplaySmallest(String, 1, 2, true, true);
         if (menuState != MENU_OFF) {
-            sprintf(String, "%s: %d", menuItems[menuState],
+            sprintf(String, "%s:%d", menuItems[menuState],
                     GetRegMenuValue(menuState));
-            GUI_DisplaySmallest(String, 88, 2, true, true);
+            GUI_DisplaySmallest(String, 96, 2, true, true);
         }
     } else {
         sprintf(String, "%dx%3.2fk %1.1fms %s %s", GetStepsCount(),
@@ -653,12 +653,14 @@ static void OnKeyDown(uint8_t key) {
             if (settings.scanDelay < 8000) {
                 settings.scanDelay += 100;
                 rssiMin = 255;
+                settings.rssiTriggerLevel = 0;
             }
             break;
         case KEY_7:
             if (settings.scanDelay > 400) {
                 settings.scanDelay -= 100;
                 rssiMin = 255;
+                settings.rssiTriggerLevel = 0;
             }
             break;
         case KEY_3:
@@ -893,6 +895,9 @@ static void Scan() {
     }
     resetBlacklist = false;
     ++peak.t;
+    if (!settings.rssiTriggerLevel) {
+        settings.rssiTriggerLevel = rssiMax;
+    }
 
     if (!peak.f || rssiMax > peak.rssi || peak.t >= 16) {
         peak.t = 0;
@@ -903,7 +908,7 @@ static void Scan() {
 }
 
 static void Update() {
-    if (IsPeakOverLevel()) {
+    if (IsPeakOverLevel() && rssiMin != 255) {
         ToggleRX(true);
 
         // coz there can be already RX on
@@ -923,6 +928,7 @@ static void Update() {
             SetF(fMeasure);
         }
         peak.rssi = rssiHistory[peak.i] = GetRssi();
+        ToggleRX(IsPeakOverLevel());
     }
 
     if ((!IsPeakOverLevel() && !settings.isStillMode) || rssiMin == 255) {
@@ -955,11 +961,6 @@ void APP_RunSpectrum() {
     R48 = BK4819_GetRegister(0x48);
     R4B = BK4819_GetRegister(0x4B);
     R7E = BK4819_GetRegister(0x7E);
-
-    /* BK4819_WriteRegister(BK4819_REG_10, 0b000000001111010);
-    BK4819_WriteRegister(BK4819_REG_11, 0b000001001111011);
-    BK4819_WriteRegister(BK4819_REG_13, 0b000001110111110);
-    BK4819_WriteRegister(BK4819_REG_14, 0b000000000011001); */
 
     BK4819_SetFilterBandwidth(GetBWIndex());
     ResetPeak();
