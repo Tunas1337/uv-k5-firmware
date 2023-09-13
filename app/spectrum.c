@@ -75,16 +75,82 @@ uint16_t scanStepValues[] = {
 enum MenuState {
     MENU_OFF,
     MENU_AFDAC,
-    MENU_RRU,
-    MENU_AGC,
+    MENU_PGA,
+    MENU_MIXER,
+    MENU_LNA,
+    MENU_LNA_SHORT,
 } menuState;
 
 char *menuItems[] = {
-    "",
-    "AFDAC",
-    "RRU",
-    "AGC",
+    "", "AFDAC", "PGA", "MIXER", "LNA", "LNAS",
 };
+
+static uint16_t GetRegMenuValue(enum MenuState st) {
+    switch (st) {
+        case MENU_AFDAC:
+            return BK4819_GetRegister(0x48) & 0b1111;
+            break;
+        case MENU_PGA:
+            return BK4819_GetRegister(0x13) & 0b111;
+            break;
+        case MENU_MIXER:
+            return (BK4819_GetRegister(0x13) >> 3) & 0b11;
+            break;
+        case MENU_LNA:
+            return (BK4819_GetRegister(0x13) >> 5) & 0b111;
+            break;
+        case MENU_LNA_SHORT:
+            return (BK4819_GetRegister(0x13) >> 8) & 0b11;
+            break;
+        default:
+            return 0;
+    }
+    return 0;
+}
+
+static void SetRegMenuValue(enum MenuState st, bool add) {
+    uint8_t v = GetRegMenuValue(st);
+    uint16_t reg;
+    uint16_t vmin = 0, vmax;
+    uint8_t regnum = 0;
+    uint8_t offset = 0;
+    switch (st) {
+        case MENU_AFDAC:
+            vmax = 0b1111;
+            regnum = 0x48;
+            break;
+        case MENU_PGA:
+            vmax = 0b111;
+            regnum = 0x13;
+            break;
+        case MENU_MIXER:
+            regnum = 0x13;
+            offset = 3;
+            vmax = 0b11;
+            break;
+        case MENU_LNA:
+            regnum = 0x13;
+            offset = 5;
+            vmax = 0b111;
+            break;
+        case MENU_LNA_SHORT:
+            regnum = 0x13;
+            offset = 8;
+            vmax = 0b11;
+            break;
+        default:
+            return;
+    }
+    reg = BK4819_GetRegister(regnum);
+    if (add && v < vmax) {
+        v++;
+    }
+    if (!add && v > vmin) {
+        v--;
+    }
+    reg &= ~(vmax << offset);
+    BK4819_WriteRegister(regnum, reg | (v << offset));
+}
 
 char *bwOptions[] = {"25k", "12.5k", "6.25k"};
 char *modulationTypeOptions[] = {"FM", "AM", "USB"};
@@ -490,56 +556,6 @@ static void DrawSpectrum() {
     }
 }
 
-static void SetRegMenuValue(enum MenuState st, bool add) {
-    uint8_t v;
-    uint16_t reg;
-    switch (st) {
-        case MENU_AFDAC:
-
-            reg = BK4819_GetRegister(0x48);
-            v = reg & 0b1111;
-            if (add && v < 0b1111) {
-                v++;
-            }
-            if (!add && v > 0) {
-                v--;
-            }
-            reg &= ~0b1111;
-            BK4819_WriteRegister(0x48, reg | v);
-            break;
-        case MENU_RRU:
-            break;
-        case MENU_AGC:
-            reg = BK4819_GetRegister(0x13);
-            if (add && reg < 0b1111111111111111) {
-                reg++;
-            }
-            if (!add && reg > 0) {
-                reg--;
-            }
-            BK4819_WriteRegister(0x13, reg);
-            break;
-        default:
-            return;
-    }
-}
-
-static uint16_t GetRegMenuValue(enum MenuState st) {
-    switch (st) {
-        case MENU_AFDAC:
-            return BK4819_GetRegister(0x48) & 0b1111;
-            break;
-        case MENU_RRU:
-            break;
-        case MENU_AGC:
-            return BK4819_GetRegister(0x13);
-            break;
-        default:
-            return 0;
-    }
-    return 0;
-}
-
 static void DrawStatus() {
     char String[32];
 
@@ -731,7 +747,7 @@ static void OnKeyDown(uint8_t key) {
             break;
         case KEY_MENU:
             if (settings.isStillMode) {
-                if (menuState < MENU_AGC) {
+                if (menuState < MENU_LNA_SHORT) {
                     menuState++;
                 } else {
                     menuState = MENU_AFDAC;
