@@ -79,69 +79,85 @@ enum MenuState {
     MENU_MIXER,
     MENU_LNA,
     MENU_LNA_SHORT,
+    MENU_IF,
+    MENU_RF,
+    MENU_RFW,
 } menuState;
 
 char *menuItems[] = {
-    "", "AFDAC", "PGA", "MIXER", "LNA", "LNAS",
+    "", "AFDAC", "PGA", "MIXER", "LNA", "LNAS", "IF", "RF", "RFWe",
 };
 
 static uint16_t GetRegMenuValue(enum MenuState st) {
     switch (st) {
         case MENU_AFDAC:
             return BK4819_GetRegister(0x48) & 0b1111;
-            break;
         case MENU_PGA:
             return BK4819_GetRegister(0x13) & 0b111;
-            break;
         case MENU_MIXER:
             return (BK4819_GetRegister(0x13) >> 3) & 0b11;
-            break;
         case MENU_LNA:
             return (BK4819_GetRegister(0x13) >> 5) & 0b111;
-            break;
         case MENU_LNA_SHORT:
             return (BK4819_GetRegister(0x13) >> 8) & 0b11;
-            break;
+        case MENU_IF:
+            return BK4819_GetRegister(0x3D);
+        case MENU_RF:
+            return (BK4819_GetRegister(0x43) >> 12) & 0b111;
+        case MENU_RFW:
+            return (BK4819_GetRegister(0x43) >> 9) & 0b111;
         default:
             return 0;
     }
-    return 0;
 }
 
 static void SetRegMenuValue(enum MenuState st, bool add) {
-    uint8_t v = GetRegMenuValue(st);
-    uint16_t reg;
+    uint16_t v = GetRegMenuValue(st);
     uint16_t vmin = 0, vmax;
     uint8_t regnum = 0;
     uint8_t offset = 0;
     switch (st) {
         case MENU_AFDAC:
-            vmax = 0b1111;
             regnum = 0x48;
+            vmax = 0b1111;
             break;
         case MENU_PGA:
-            vmax = 0b111;
             regnum = 0x13;
+            vmax = 0b111;
             break;
         case MENU_MIXER:
             regnum = 0x13;
-            offset = 3;
             vmax = 0b11;
+            offset = 3;
             break;
         case MENU_LNA:
             regnum = 0x13;
-            offset = 5;
             vmax = 0b111;
+            offset = 5;
             break;
         case MENU_LNA_SHORT:
             regnum = 0x13;
-            offset = 8;
             vmax = 0b11;
+            offset = 8;
+            break;
+        case MENU_IF:
+            regnum = 0x3D;
+            vmax = 0xFFFF;
+            break;
+        case MENU_RF:
+            regnum = 0x43;
+            vmax = 0b111;
+            offset = 12;
+            break;
+        case MENU_RFW:
+            regnum = 0x43;
+            vmax = 0b111;
+            offset = 9;
             break;
         default:
             return;
     }
-    reg = BK4819_GetRegister(regnum);
+    uint16_t reg = BK4819_GetRegister(regnum);
     if (add && v < vmax) {
         v++;
     }
@@ -183,8 +199,8 @@ uint8_t btnPrev;
 uint32_t currentFreq, tempFreq;
 uint8_t freqInputIndex = 0;
 KEY_Code_t freqInputArr[10];
-uint16_t oldAFSettings;
-uint16_t oldBWSettings;
+uint16_t R47;
+uint16_t R43;
 
 bool isInitialized;
 bool resetBlacklist;
@@ -255,14 +271,6 @@ static int clamp(int v, int min, int max) {
 static uint8_t my_abs(signed v) { return v > 0 ? v : -v; }
 
 // Radio functions
-
-static void RestoreOldAFSettings() {
-    BK4819_WriteRegister(BK4819_REG_47, oldAFSettings);
-}
-
-static void RestoreOldBWSettings() {
-    BK4819_WriteRegister(0x43, oldBWSettings);
-}
 
 static void ToggleAFBit(bool on) {
     uint16_t reg = BK4819_GetRegister(BK4819_REG_47);
@@ -361,9 +369,13 @@ uint32_t GetPeakF() { return peak.f + settings.stillOffset; }
 
 static void DeInitSpectrum() {
     SetF(currentFreq);
-    RestoreOldAFSettings();
-    RestoreOldBWSettings();
-    BK4819_WriteRegister(0x43, oldBWSettings);
+    BK4819_WriteRegister(0x37, R37);
+    BK4819_WriteRegister(0x3D, R3D);
+    BK4819_WriteRegister(0x43, R43);
+    BK4819_WriteRegister(0x47, R47);
+    BK4819_WriteRegister(0x48, R48);
+    BK4819_WriteRegister(0x4B, R4B);
+    BK4819_WriteRegister(0x7E, R7E);
     isInitialized = false;
 }
 
@@ -560,14 +572,14 @@ static void DrawStatus() {
     char String[32];
 
     if (settings.isStillMode) {
-        sprintf(String, "Offset: %2.1fkHz %s %s", settings.stillOffset * 1e-2,
+        sprintf(String, "Df: %2.1fkHz %s %s", settings.stillOffset * 1e-2,
                 modulationTypeOptions[settings.modulationType],
                 bwOptions[settings.listenBw]);
         GUI_DisplaySmallest(String, 1, 2, true, true);
         if (menuState != MENU_OFF) {
             sprintf(String, "%s:%d", menuItems[menuState],
                     GetRegMenuValue(menuState));
-            GUI_DisplaySmallest(String, 96, 2, true, true);
+            GUI_DisplaySmallest(String, 88, 2, true, true);
         }
     } else {
         sprintf(String, "%dx%3.2fk %1.1fms %s %s", GetStepsCount(),
@@ -749,7 +761,7 @@ static void OnKeyDown(uint8_t key) {
             break;
         case KEY_MENU:
             if (settings.isStillMode) {
-                if (menuState < MENU_LNA_SHORT) {
+                if (menuState < MENU_RFW) {
                     menuState++;
                 } else {
                     menuState = MENU_AFDAC;
@@ -954,10 +966,10 @@ static void Tick() {
 void APP_RunSpectrum() {
     // TX here coz it always? set to active VFO
     currentFreq = gEeprom.VfoInfo[gEeprom.TX_CHANNEL].pCurrent->Frequency;
-    oldAFSettings = BK4819_GetRegister(0x47);
-    oldBWSettings = BK4819_GetRegister(0x43);
-    R3D = BK4819_GetRegister(0x3D);
     R37 = BK4819_GetRegister(0x37);
+    R3D = BK4819_GetRegister(0x3D);
+    R43 = BK4819_GetRegister(0x43);
+    R47 = BK4819_GetRegister(0x47);
     R48 = BK4819_GetRegister(0x48);
     R4B = BK4819_GetRegister(0x4B);
     R7E = BK4819_GetRegister(0x7E);
