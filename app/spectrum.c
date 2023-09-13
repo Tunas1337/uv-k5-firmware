@@ -18,7 +18,7 @@
 
 #include <stdint.h>
 
-uint16_t R3D, R37, R48, R4B;
+uint16_t R3D, R37, R48, R4B, R7E;
 const static uint32_t F_MIN = 1800000;
 const static uint32_t F_MAX = 130000000;
 
@@ -70,6 +70,20 @@ uint16_t scanStepValues[] = {
     1,   10,  50,  100,
 
     250, 500, 625, 833, 1000, 1250, 2500, 10000,
+};
+
+enum MenuState {
+    MENU_OFF,
+    MENU_AFDAC,
+    MENU_RRU,
+    MENU_AGC,
+} menuState;
+
+char *menuItems[] = {
+    "",
+    "AFDAC",
+    "RRU",
+    "AGC",
 };
 
 char *bwOptions[] = {"25k", "12.5k", "6.25k"};
@@ -211,11 +225,22 @@ static void SetModulation(ModulationType type) {
         BK4819_WriteRegister(BK4819_REG_37, 0x160F);
         BK4819_WriteRegister(0x48, 0b0000001110101000);
         BK4819_WriteRegister(0x4B, R4B | (1 << 5));
+        BK4819_WriteRegister(0x7E, R7E);
+    } else if (type == MOD_AM) {
+        uint16_t r7e = BK4819_GetRegister(0x7E);
+        r7e &= ~(0b111);
+        r7e |= 0b101;
+        r7e &= ~(0b111 << 12);
+        r7e |= 0b010 << 12;
+        r7e &= ~(1 << 15);
+        r7e |= 1 << 15;
+        BK4819_WriteRegister(0x7E, R7E);
     } else {
         BK4819_WriteRegister(0x3D, R3D);
         BK4819_WriteRegister(BK4819_REG_37, R37);
         BK4819_WriteRegister(0x48, R48);
         BK4819_WriteRegister(0x4B, R4B);
+        BK4819_WriteRegister(0x7E, R7E);
     }
     BK4819_WriteRegister(BK4819_REG_47, reg);
 }
@@ -465,6 +490,56 @@ static void DrawSpectrum() {
     }
 }
 
+static void SetRegMenuValue(enum MenuState st, bool add) {
+    uint8_t v;
+    uint16_t reg;
+    switch (st) {
+        case MENU_AFDAC:
+
+            reg = BK4819_GetRegister(0x48);
+            v = reg & 0b1111;
+            if (add && v < 0b1111) {
+                v++;
+            }
+            if (!add && v > 0) {
+                v--;
+            }
+            reg &= ~0b1111;
+            BK4819_WriteRegister(0x48, reg | v);
+            break;
+        case MENU_RRU:
+            break;
+        case MENU_AGC:
+            reg = BK4819_GetRegister(0x13);
+            if (add && reg < 0b1111111111111111) {
+                reg++;
+            }
+            if (!add && reg > 0) {
+                reg--;
+            }
+            BK4819_WriteRegister(0x13, reg);
+            break;
+        default:
+            return;
+    }
+}
+
+static uint16_t GetRegMenuValue(enum MenuState st) {
+    switch (st) {
+        case MENU_AFDAC:
+            return BK4819_GetRegister(0x48) & 0b1111;
+            break;
+        case MENU_RRU:
+            break;
+        case MENU_AGC:
+            return BK4819_GetRegister(0x13);
+            break;
+        default:
+            return 0;
+    }
+    return 0;
+}
+
 static void DrawStatus() {
     char String[32];
 
@@ -473,6 +548,11 @@ static void DrawStatus() {
                 modulationTypeOptions[settings.modulationType],
                 bwOptions[settings.listenBw]);
         GUI_DisplaySmallest(String, 1, 2, true, true);
+        if (menuState != MENU_OFF) {
+            sprintf(String, "%s: %d", menuItems[menuState],
+                    GetRegMenuValue(menuState));
+            GUI_DisplaySmallest(String, 88, 2, true, true);
+        }
     } else {
         sprintf(String, "%dx%3.2fk %1.1fms %s %s", GetStepsCount(),
                 GetScanStep() * 1e-2, settings.scanDelay * 1e-3,
@@ -580,10 +660,18 @@ static void OnKeyDown(uint8_t key) {
             UpdateFreqChangeStep(-GetScanStep() * 4);
             break;
         case KEY_UP:
+            if (menuState != MENU_OFF) {
+                SetRegMenuValue(menuState, true);
+                break;
+            }
             UpdateCurrentFreq(settings.frequencyChangeStep);
             resetBlacklist = true;
             break;
         case KEY_DOWN:
+            if (menuState != MENU_OFF) {
+                SetRegMenuValue(menuState, false);
+                break;
+            }
             UpdateCurrentFreq(-settings.frequencyChangeStep);
             resetBlacklist = true;
             break;
@@ -641,7 +729,20 @@ static void OnKeyDown(uint8_t key) {
             } */
             ResetRSSIHistory();
             break;
+        case KEY_MENU:
+            if (settings.isStillMode) {
+                if (menuState < MENU_AGC) {
+                    menuState++;
+                } else {
+                    menuState = MENU_AFDAC;
+                }
+            }
+            break;
         case KEY_EXIT:
+            if (menuState != MENU_OFF) {
+                menuState = MENU_OFF;
+                break;
+            }
             if (settings.isStillMode) {
                 settings.isStillMode = false;
                 settings.stillOffset = 0;
@@ -801,8 +902,8 @@ static void Update() {
 
     if (settings.isStillMode || IsPeakOverLevel()) {
         BK4819_SetFilterBandwidth(GetBWIndex());
-        if (settings.isStillMode && fMeasure != peak.f) {
-            fMeasure = peak.f;
+        if (settings.isStillMode && fMeasure != GetPeakF()) {
+            fMeasure = GetPeakF();
             SetF(fMeasure);
         }
         peak.rssi = rssiHistory[peak.i] = GetRssi();
@@ -837,11 +938,12 @@ void APP_RunSpectrum() {
     R37 = BK4819_GetRegister(0x37);
     R48 = BK4819_GetRegister(0x48);
     R4B = BK4819_GetRegister(0x4B);
+    R7E = BK4819_GetRegister(0x7E);
 
-    BK4819_WriteRegister(BK4819_REG_10, 0b000000001111010);
+    /* BK4819_WriteRegister(BK4819_REG_10, 0b000000001111010);
     BK4819_WriteRegister(BK4819_REG_11, 0b000001001111011);
     BK4819_WriteRegister(BK4819_REG_13, 0b000001110111110);
-    BK4819_WriteRegister(BK4819_REG_14, 0b000000000011001);
+    BK4819_WriteRegister(BK4819_REG_14, 0b000000000011001); */
 
     BK4819_SetFilterBandwidth(GetBWIndex());
     ResetPeak();
