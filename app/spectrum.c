@@ -18,7 +18,7 @@
 
 #include <stdint.h>
 
-uint16_t R3D, R37, R48, R4B, R7E;
+static uint16_t R30, R37, R3D, R43, R47, R48, R4B, R7E;
 const static uint32_t F_MIN = 1800000;
 const static uint32_t F_MAX = 130000000;
 
@@ -181,10 +181,20 @@ struct SpectrumSettings {
     bool isStillMode;
     int32_t stillOffset;
     bool backlightState;
+    BK4819_FilterBandwidth_t bw;
     BK4819_FilterBandwidth_t listenBw;
     ModulationType modulationType;
-} settings = {STEPS_64, S_STEP_25_0kHz,        80000, 800, 0, false, 0,
-              true,     BK4819_FILTER_BW_WIDE, false};
+} settings = {STEPS_64,
+              S_STEP_25_0kHz,
+              80000,
+              800,
+              0,
+              false,
+              0,
+              true,
+              BK4819_FILTER_BW_WIDE,
+              BK4819_FILTER_BW_WIDE,
+              false};
 
 static const uint8_t DrawingEndY = 42;
 
@@ -199,8 +209,6 @@ uint8_t btnPrev;
 uint32_t currentFreq, tempFreq;
 uint8_t freqInputIndex = 0;
 KEY_Code_t freqInputArr[10];
-uint16_t R47;
-uint16_t R43;
 
 bool isInitialized;
 bool resetBlacklist;
@@ -335,10 +343,18 @@ static void ResetRSSI() {
 }
 
 static void SetF(uint32_t f) {
-    BK4819_PickRXFilterPathBasedOnFrequency(currentFreq);
+    BK4819_PickRXFilterPathBasedOnFrequency(f);
     BK4819_SetFrequency(f);
+    uint16_t reg = BK4819_GetRegister(BK4819_REG_30);
     BK4819_WriteRegister(BK4819_REG_30, 0);
-    BK4819_WriteRegister(BK4819_REG_30, 0xBFF1);
+    BK4819_WriteRegister(BK4819_REG_30, reg);
+}
+
+static void SetBW(BK4819_FilterBandwidth_t bw) {
+    if (settings.bw == bw) {
+        return;
+    }
+    BK4819_SetFilterBandwidth(bw = settings.bw);
 }
 
 // Spectrum related
@@ -369,6 +385,7 @@ uint32_t GetPeakF() { return peak.f + settings.stillOffset; }
 
 static void DeInitSpectrum() {
     SetF(currentFreq);
+    BK4819_WriteRegister(0x30, R30);
     BK4819_WriteRegister(0x37, R37);
     BK4819_WriteRegister(0x3D, R3D);
     BK4819_WriteRegister(0x43, R43);
@@ -410,13 +427,26 @@ static void ListenBK4819() {
         fMeasure = GetPeakF();
         SetF(fMeasure);
     }
-    BK4819_SetFilterBandwidth(settings.listenBw);
+    SetBW(settings.listenBw);
     ToggleAFDAC(true);
     ToggleAFBit(true);
 }
 
 static bool IsBroadcastFM(uint32_t f) {
     return f >= F_BFM_MIN && f <= F_BFM_MAX;
+}
+
+static bool audioState = true;
+static void ToggleAudio(bool on) {
+    if(on == audioState) {
+        return;
+    }
+    audioState = on;
+    if (on) {
+        GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
+    } else {
+        GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
+    }
 }
 
 bool rxState = true;
@@ -429,19 +459,17 @@ static void ToggleRX(bool on) {
     BK4819_ToggleGpioOut(BK4819_GPIO0_PIN28_GREEN, on);
 
     if (on) {
-        GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
         if (IsBroadcastFM(peak.f)) {
             ListenBK1080();
         } else {
             ListenBK4819();
         }
     } else {
-        GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
         ToggleAFDAC(false);
         ToggleAFBit(false);
         BK1080_Mute(true);
         BK1080_Init(0, false);
-        BK4819_SetFilterBandwidth(GetBWIndex());
+        SetBW(GetBWIndex());
     }
 }
 
@@ -455,7 +483,7 @@ static void UpdateScanStep(int diff) {
     if ((diff > 0 && settings.scanStepIndex < S_STEP_100_0kHz) ||
         (diff < 0 && settings.scanStepIndex > 0)) {
         settings.scanStepIndex += diff;
-        BK4819_SetFilterBandwidth(GetBWIndex());
+        SetBW(GetBWIndex());
         rssiMin = 255;
         settings.frequencyChangeStep = GetBW() >> 1;
     }
@@ -911,7 +939,7 @@ static void Scan() {
         settings.rssiTriggerLevel = rssiMax;
     }
 
-    if (!peak.f || rssiMax > peak.rssi || peak.t >= 16) {
+    if (!settings.isStillMode && (!peak.f || rssiMax > peak.rssi || peak.t >= 16)) {
         peak.t = 0;
         peak.rssi = rssiMax;
         peak.f = fPeak;
@@ -920,11 +948,12 @@ static void Scan() {
 }
 
 static void Update() {
+    ToggleAudio(IsPeakOverLevel());
     if (IsPeakOverLevel() && rssiMin != 255) {
         ToggleRX(true);
 
         // coz there can be already RX on
-        BK4819_SetFilterBandwidth(settings.listenBw);
+        SetBW(settings.listenBw);
 
         // if (!IsBroadcastFM(peak.f)) {
         for (uint8_t i = 0; i < 250 && GetKey() == 255; ++i) {
@@ -933,8 +962,9 @@ static void Update() {
         // }
     }
 
+    ToggleAudio(IsPeakOverLevel());
     if (settings.isStillMode || IsPeakOverLevel()) {
-        BK4819_SetFilterBandwidth(GetBWIndex());
+        SetBW(GetBWIndex());
         if (settings.isStillMode && fMeasure != GetPeakF()) {
             fMeasure = GetPeakF();
             SetF(fMeasure);
@@ -944,6 +974,7 @@ static void Update() {
     }
 
     if ((!IsPeakOverLevel() && !settings.isStillMode) || rssiMin == 255) {
+        ToggleAudio(false);
         ToggleRX(false);
         Scan();
     }
@@ -966,6 +997,8 @@ static void Tick() {
 void APP_RunSpectrum() {
     // TX here coz it always? set to active VFO
     currentFreq = gEeprom.VfoInfo[gEeprom.TX_CHANNEL].pCurrent->Frequency;
+
+    R30 = BK4819_GetRegister(0x30);
     R37 = BK4819_GetRegister(0x37);
     R3D = BK4819_GetRegister(0x3D);
     R43 = BK4819_GetRegister(0x43);
@@ -974,7 +1007,9 @@ void APP_RunSpectrum() {
     R4B = BK4819_GetRegister(0x4B);
     R7E = BK4819_GetRegister(0x7E);
 
-    BK4819_SetFilterBandwidth(GetBWIndex());
+    BK4819_SetFilterBandwidth(
+        BK4819_FILTER_BW_WIDE);  // as in initial settings of spectrum
+
     ResetPeak();
     resetBlacklist = true;
     // HACK: to make sure that all params are set to our default
