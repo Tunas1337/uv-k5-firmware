@@ -382,6 +382,20 @@ void APP_SetFrequencyByStep(VFO_Info_t *pInfo, int8_t Step)
 	uint32_t Frequency;
 
 	Frequency = pInfo->ConfigRX.Frequency + (Step * pInfo->StepFrequency);
+
+	if (pInfo->StepFrequency == 833) {
+		const uint32_t Lower = LowerLimitFrequencyBandTable[pInfo->Band];
+		const uint32_t Delta = Frequency - Lower;
+		uint32_t Base = (Delta / 2500) * 2500;
+		const uint32_t Index = ((Delta - Base) % 2500) / 833;
+
+		if (Index == 2) {
+			Base++;
+		}
+
+		Frequency = Lower + Base + (Index * 833);
+	}
+
 	if (Frequency > UpperLimitFrequencyBandTable[pInfo->Band]) {
 		pInfo->ConfigRX.Frequency = LowerLimitFrequencyBandTable[pInfo->Band];
 	} else if (Frequency < LowerLimitFrequencyBandTable[pInfo->Band]) {
@@ -1124,18 +1138,18 @@ void APP_TimeSlice500ms(void)
 #if defined(ENABLE_FMRADIO)
 			(gFM_ScanState == FM_SCAN_OFF || gAskToSave) &&
 #endif
-			gScanState == SCAN_OFF && gCssScanMode == CSS_SCAN_MODE_OFF) {
+			gCssScanMode == CSS_SCAN_MODE_OFF) {
 			if (gBacklightCountdown) {
 				gBacklightCountdown--;
 				if (gBacklightCountdown == 0) {
 					GPIO_ClearBit(&GPIOB->DATA, GPIOB_PIN_BACKLIGHT);
 				}
 			}
-			if (
+			if (gScanState == SCAN_OFF
 #if defined(ENABLE_AIRCOPY)
-				gScreenToDisplay != DISPLAY_AIRCOPY &&
+				&& gScreenToDisplay != DISPLAY_AIRCOPY
 #endif
-				(gScreenToDisplay != DISPLAY_SCANNER || (gScanCssState >= SCAN_CSS_STATE_FOUND))) {
+				&& (gScreenToDisplay != DISPLAY_SCANNER || (gScanCssState >= SCAN_CSS_STATE_FOUND))) {
 				if (gEeprom.AUTO_KEYPAD_LOCK && gKeyLockCountdown && !gDTMF_InputMode) {
 					gKeyLockCountdown--;
 					if (gKeyLockCountdown == 0) {
