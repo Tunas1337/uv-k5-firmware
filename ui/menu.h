@@ -82,7 +82,7 @@ enum {
 	MENU_500TX,
 	MENU_350EN,
 	MENU_SCREN,
-	MENU_ALLTX		= 57,
+	MENU_ALLTX,
 };
 
 extern bool gIsInSubMenu;
