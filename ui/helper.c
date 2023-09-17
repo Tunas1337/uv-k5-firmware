@@ -82,7 +82,6 @@ void UI_PrintString(const char *pString, uint8_t Start, uint8_t End, uint8_t Lin
 		if (pString[i] >= ' ' && pString[i] < 0x7F) {
 			uint8_t Index = pString[i] - ' ';
 			memcpy(gFrameBuffer[Line + 0] + (i * Width) + Start, &gFontBig[Index][0], 8);
-			memcpy(gFrameBuffer[Line + 1] + (i * Width) + Start, &gFontBig[Index][8], 8);
 		}
 	}
 }

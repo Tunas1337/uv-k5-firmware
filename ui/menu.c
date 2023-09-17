@@ -197,16 +197,15 @@ void UI_DisplayMenu(void)
 	// Invert the selected menu item (to make it white on black)
 	for (i = 42; i < 84; i++) {
 	 	gFrameBuffer[0][i] ^= 0xFF;
-	 	gFrameBuffer[1][i] ^= 0xFF;
 	}
 	// Draw the line separating the menu options from the menu
 	for (i = 0; i < 128; i++) {
 		if(i % 16 != 0)
-		gFrameBuffer[2][i] = 0b00010000;
+		gFrameBuffer[1][i] = 0b00010000;
 		else
-		gFrameBuffer[2][i] = 0b00111000;
+		gFrameBuffer[1][i] = 0b00111000;
 		// Draw a small indicator moving along from left to right to indicate the progress along the menu
-		gFrameBuffer[2][gMenuCursor * 9 / 4] = 0b11111100;
+		gFrameBuffer[1][gMenuCursor * 9 / 4] = 0b11111100;
 		// gFrameBuffer[2][i+1] = 0b11111100;
 		// gFrameBuffer[2][i+2] = 0b11111100;
 		// gFrameBuffer[2][i+3] = 0b11111100;
@@ -427,6 +426,25 @@ void UI_DisplayMenu(void)
 		break;
 
 	case MENU_VOL:
+		// Draw the empty battery outline bitmap (18x32)
+		for (i = 0; i < 4; i++) {
+			memcpy(gFrameBuffer[3+i]+100, &BITMAP_SettingsBatt[i*18], 18);
+		}
+		// Fill the battery based on the percentage.
+		// Basically, negate pixels 100 through 117 on rows 3 through 6, depending on the battery percentage.
+		for (i = 0; i < (gBatteryDisplayLevel+4) / 2; i++) {
+			for (uint8_t j = 0; j < 14; j++) {
+				// If we're doing row 6, cut out the last 2 pixels/bits, otherwise it cuts into the battery outline.
+				if (i == 0) {
+					gFrameBuffer[6-i][102+j] ^= 0b01111111;
+				}
+				// If we're doing the top row (3), cut out the first 6 pixels/bits, otherwise it cuts into the battery outline.
+				else if (i == 3) {
+					gFrameBuffer[6-i][102+j] ^= 0b11000000;
+				}
+				else gFrameBuffer[6-i][102+j] ^= 0b11111111;
+			}
+		}
 		sprintf(String, "%d.%02dV", gBatteryVoltageAverage / 100, gBatteryVoltageAverage % 100);
 		break;
 
