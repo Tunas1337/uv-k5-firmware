@@ -10,6 +10,7 @@ extern const uint8_t BITMAP_BatteryLevel2[18];
 extern const uint8_t BITMAP_BatteryLevel3[18];
 extern const uint8_t BITMAP_BatteryLevel4[18];
 extern const uint8_t BITMAP_BatteryLevel5[18];
+extern const uint8_t BITMAP_SettingsBatt[72];
 
 extern const uint8_t BITMAP_USB_C[9];
 extern const uint8_t BITMAP_KeyLock[9];
