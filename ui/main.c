@@ -259,10 +259,6 @@ void UI_DisplayMain(void)
 						}
 						UI_DisplaySmallDigits(2, String + 6, 112, Line + 1);
 						break;
-					case MDF_CHANNEL:
-						sprintf(String, "CH-%03d", gEeprom.ScreenChannel[i] + 1);
-						UI_PrintString(String, 31, 112, i * 4, 8, true);
-						break;
 					case MDF_NAME:
 						if(gEeprom.VfoInfo[i].Name[0] == 0 || gEeprom.VfoInfo[i].Name[0] == 0xFF) {
 							sprintf(String, "CH-%03d", gEeprom.ScreenChannel[i] + 1);
@@ -270,6 +266,30 @@ void UI_DisplayMain(void)
 						} else {
 							UI_PrintString(gEeprom.VfoInfo[i].Name, 31, 112, i * 4, 8, true);
 						}
+						break;
+					case MDF_FREQANDNAME:
+						if (gEeprom.VfoInfo[i].Name[0] <= 32 ||
+							    gEeprom.VfoInfo[i].Name[0] >= 127)
+						{	// no channel name, show channel number instead
+							sprintf(String, "CH-%03u", gEeprom.ScreenChannel[i] + 1);
+						}
+						else
+						{	// channel name
+							memset(String, 0, sizeof(String));
+							memmove(String, gEeprom.VfoInfo[i].Name, 10);
+						}
+						UI_PrintString(String, 31, 127, i * 4, 8, true);
+
+						// show the channel frequency below the channel number/name
+						uint32_t frequency_Hz = gEeprom.VfoInfo[i].pRX->Frequency;
+						if (gCurrentFunction == FUNCTION_TRANSMIT)
+						{	// transmitting
+							Channel = (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) ? gEeprom.RX_CHANNEL : gEeprom.TX_CHANNEL;
+							frequency_Hz = gEeprom.VfoInfo[i].pTX->Frequency;
+						}
+						sprintf(String, "%03u.%05u", frequency_Hz / 100000, frequency_Hz % 100000);
+						UI_PrintString(String, 31 + 8, 127, i * 4 + 1, 8, true);
+
 						break;
 					}
 				} else {

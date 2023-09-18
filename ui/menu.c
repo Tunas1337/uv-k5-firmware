@@ -121,8 +121,8 @@ static const char gSubMenu_SC_REV[3][3] = {
 
 static const char gSubMenu_MDF[3][5] = {
 	"FREQ",
-	"CHAN",
 	"NAME",
+	"BOTH",
 };
 
 #if defined(ENABLE_ALARM)
