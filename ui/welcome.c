@@ -23,6 +23,8 @@
 #include "ui/helper.h"
 #include "ui/welcome.h"
 #include "version.h"
+#include "driver/system.h"
+#include "audio.h"
 
 void UI_DisplayWelcome(void)
 {
@@ -31,6 +33,8 @@ void UI_DisplayWelcome(void)
 
 	memset(gStatusLine, 0, sizeof(gStatusLine));
 	memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
+	UI_SelfTest();
+	ST7565_FillScreen(0x00);
 
 	if (gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_FULL_SCREEN) {
 		ST7565_FillScreen(0xFF);
@@ -50,5 +54,24 @@ void UI_DisplayWelcome(void)
 		ST7565_BlitStatusLine();
 		ST7565_BlitFullScreen();
 	}
+}
+
+void UI_SelfTest(void)
+{
+	UI_PrintString("SELF TEST", 0, 127, 0, 10, true);
+	ST7565_BlitFullScreen();
+	SYSTEM_DelayMs(500);
+	UI_PrintString("BATTERY [OK]", 0, 127, 1, 10, true);
+	ST7565_BlitFullScreen();
+	SYSTEM_DelayMs(100);
+	UI_PrintString("DISPLAY [OK]", 0, 127, 2, 10, true);
+	ST7565_BlitFullScreen();
+	SYSTEM_DelayMs(100);
+	AUDIO_PlayFreq(1000,50);
+	SYSTEM_DelayMs(50);
+	AUDIO_PlayFreq(1000,50);
+	UI_PrintString("AUDIO [OK]", 0, 127, 3, 10, true);
+	ST7565_BlitFullScreen();
+	SYSTEM_DelayMs(50);
 }
 

@@ -301,6 +301,26 @@ Skip:
 	return Count + 1U;
 }
 
+void AUDIO_PlayFreq(uint16_t Freq, uint16_t Duration)
+{
+	uint16_t TuningGain = BK4819_ReadRegister(BK4819_REG_70);
+	uint16_t ToneConfig = BK4819_ReadRegister(BK4819_REG_71);
+	BK4819_PlayTone(Freq, true);
+	SYSTEM_DelayMs(1);
+	GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
+	SYSTEM_DelayMs(5);
+	BK4819_ExitTxMute();
+	BK4819_EnterTxMute();
+	SYSTEM_DelayMs(5);
+	GPIO_ClearBit(&GPIOC->DATA,4);
+	SYSTEM_DelayMs(1);
+	BK4819_TurnsOffTones_TurnsOnRX();
+	SYSTEM_DelayMs(1);
+	BK4819_WriteRegister(BK4819_REG_71, ToneConfig);
+	GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
+	BK4819_WriteRegister(BK4819_REG_70, TuningGain);
+}
+
 void AUDIO_PlayQueuedVoice(void)
 {
 	uint8_t VoiceID;

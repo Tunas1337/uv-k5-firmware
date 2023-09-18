@@ -18,6 +18,7 @@
 #define UI_WELCOME_H
 
 void UI_DisplayWelcome(void);
+void UI_SelfTest(void);
 
 #endif
 

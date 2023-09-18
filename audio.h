@@ -128,6 +128,7 @@ extern BEEP_Type_t gBeepToPlay;
 
 void AUDIO_PlayBeep(BEEP_Type_t Beep);
 void AUDIO_PlayVoice(uint8_t VoiceID);
+void AUDIO_PlayFreq(uint16_t Frequency, uint16_t Duration);
 void AUDIO_PlaySingleVoice(bool bFlag);
 void AUDIO_SetVoiceID(uint8_t Index, VOICE_ID_t VoiceID);
 uint8_t AUDIO_SetDigitVoice(uint8_t Index, uint16_t Value);
