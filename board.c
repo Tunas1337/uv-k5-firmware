@@ -51,6 +51,14 @@ static const uint32_t gDefaultFrequencyTable[5] = {
 	43697500,
 };
 
+static const uint32_t gDefaultFrequencyTable[5] = {
+	14502500,
+	14552500,
+	43477500,
+	43502500,
+	43697500,
+};
+
 #if defined(ENABLE_OVERLAY)
 void BOARD_FLASH_Init(void)
 {
@@ -537,7 +545,7 @@ void BOARD_EEPROM_Init(void)
 	gEeprom.CROSS_BAND_RX_TX      = (Data[2] < 3) ? Data[2] : CROSS_BAND_OFF;
 	gEeprom.BATTERY_SAVE          = (Data[3] < 5) ? Data[3] : 4;
 	gEeprom.DUAL_WATCH            = (Data[4] < 3) ? Data[4] : DUAL_WATCH_CHAN_A;
-	gEeprom.BACKLIGHT             = (Data[5] < 6) ? Data[5] : 5;
+	gEeprom.BACKLIGHT             = (Data[5] < 61) ? Data[5] : 60;
 	gEeprom.TAIL_NOTE_ELIMINATION = (Data[6] < 2) ? Data[6] : true;
 	gEeprom.VFO_OPEN              = (Data[7] < 2) ? Data[7] : true;
 
