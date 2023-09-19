@@ -34,7 +34,7 @@ void UI_DisplayWelcome(void)
 	memset(gStatusLine, 0, sizeof(gStatusLine));
 	memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
 	UI_SelfTest();
-	ST7565_FillScreen(0x00);
+	memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
 
 	if (gEeprom.POWER_ON_DISPLAY_MODE == POWER_ON_DISPLAY_MODE_FULL_SCREEN) {
 		ST7565_FillScreen(0xFF);
@@ -66,12 +66,9 @@ void UI_SelfTest(void)
 	SYSTEM_DelayMs(100);
 	UI_PrintString("DISPLAY [OK]", 0, 127, 2, 10, true);
 	ST7565_BlitFullScreen();
-	SYSTEM_DelayMs(100);
-	AUDIO_PlayFreq(1000,50);
-	SYSTEM_DelayMs(50);
-	AUDIO_PlayFreq(1000,50);
+	AUDIO_PlayBeep(BEEP_500HZ_60MS_DOUBLE_BEEP);
 	UI_PrintString("AUDIO [OK]", 0, 127, 3, 10, true);
 	ST7565_BlitFullScreen();
-	SYSTEM_DelayMs(50);
+	SYSTEM_DelayMs(100);
 }
 

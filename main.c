@@ -100,7 +100,7 @@ void Main(void)
 
 		UI_DisplayWelcome();
 		BACKLIGHT_TurnOn();
-		SYSTEM_DelayMs(1000);
+		SYSTEM_DelayMs(500);
 		gMenuListCount = 49;
 #if defined(ENABLE_ALARM)
 		gMenuListCount++;

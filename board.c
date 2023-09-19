@@ -51,14 +51,6 @@ static const uint32_t gDefaultFrequencyTable[5] = {
 	43697500,
 };
 
-static const uint32_t gDefaultFrequencyTable[5] = {
-	14502500,
-	14552500,
-	43477500,
-	43502500,
-	43697500,
-};
-
 #if defined(ENABLE_OVERLAY)
 void BOARD_FLASH_Init(void)
 {
