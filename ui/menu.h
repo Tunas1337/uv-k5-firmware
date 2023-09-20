@@ -50,6 +50,7 @@ enum {
 	MENU_STE,
 	MENU_RP_STE,
 	MENU_MIC,
+	MENU_COMPAND,
 	MENU_1_CALL,
 	MENU_S_LIST,
 	MENU_SLIST1,
@@ -87,6 +88,7 @@ enum {
 
 extern bool gIsInSubMenu;
 
+extern const char gSubMenu_Compand[3][6];
 extern uint8_t gMenuCursor;
 extern int8_t gMenuScrollDirection;
 extern uint32_t gSubMenuSelection;

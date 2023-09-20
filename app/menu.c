@@ -38,6 +38,8 @@
 #include "ui/menu.h"
 #include "ui/ui.h"
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
 static const VOICE_ID_t MenuVoices[] = {
 	VOICE_ID_SQUELCH,
 	VOICE_ID_FREQUENCY_STEP,
@@ -71,6 +73,7 @@ static const VOICE_ID_t MenuVoices[] = {
 	VOICE_ID_INVALID,
 	VOICE_ID_INVALID,
 	VOICE_ID_INVALID,
+	VOICE_ID_INVALID,                     // COMPND
 	VOICE_ID_INVALID,
 	VOICE_ID_INVALID,
 	VOICE_ID_ANI_CODE,
@@ -153,6 +156,10 @@ int MENU_GetLimits(uint8_t Cursor, uint8_t *pMin, uint8_t *pMax)
 	case MENU_R_CTCS: case MENU_T_CTCS:
 		*pMin = 0;
 		*pMax = 50;
+		break;
+	case MENU_COMPAND:
+		*pMin = 0;
+		*pMax = ARRAY_SIZE(gSubMenu_Compand) - 1;
 		break;
 	case MENU_W_N: case MENU_BCL:
 	case MENU_BEEP: case MENU_AUTOLK:
@@ -421,7 +428,10 @@ void MENU_AcceptSetting(void)
 		gRequestSaveSettings = true;
 		gFlagReconfigureVfos = true;
 		return;
-
+	case MENU_COMPAND:
+			gTxVfo->Compander = gSubMenuSelection;
+			//gRequestSaveChannel = 2;
+			return;
 	case MENU_1_CALL:
 		gEeprom.CHAN_1_CALL = gSubMenuSelection;
 		break;
@@ -753,6 +763,10 @@ void MENU_ShowCurrentSetting(void)
 	case MENU_MIC:
 		gSubMenuSelection = gEeprom.MIC_SENSITIVITY;
 		break;
+
+	case MENU_COMPAND:
+				gSubMenuSelection = gTxVfo->Compander;
+				return;
 
 	case MENU_1_CALL:
 		gSubMenuSelection = gEeprom.CHAN_1_CALL;

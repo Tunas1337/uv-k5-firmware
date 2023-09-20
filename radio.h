@@ -106,6 +106,7 @@ typedef struct VFO_Info_t {
 	uint8_t BUSY_CHANNEL_LOCK;
 	uint8_t AM_CHANNEL_MODE;
 	bool IsAM;
+	uint8_t Compander;
 	char Name[16];
 } VFO_Info_t;
 

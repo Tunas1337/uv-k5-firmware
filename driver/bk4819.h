@@ -80,6 +80,8 @@ void BK4819_PickRXFilterPathBasedOnFrequency(uint32_t Frequency);
 void BK4819_DisableScramble(void);
 void BK4819_EnableScramble(uint8_t Type);
 void BK4819_DisableVox(void);
+bool BK4819_CompanderEnabled(void);
+void BK4819_SetCompander(const unsigned int mode);
 void BK4819_DisableDTMF(void);
 void BK4819_EnableDTMF(void);
 void BK4819_PlayTone(uint16_t Frequency, bool bTuningGainSwitch);

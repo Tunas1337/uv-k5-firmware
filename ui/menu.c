@@ -40,7 +40,7 @@ static const char MenuList[][7] = {
 	"VOICE",  "SC-REV",  "MDF",    "AUTOLK",
 	// 0x18
 	"S-ADD1", "S-ADD2",  "STE",    "RP-STE",
-	"MIC",    "1-CALL",  "S-LIST", "SLIST1",
+	"MIC",  "COMPND",  "1-CALL",  "S-LIST", "SLIST1",
 	// 0x20
 	"SLIST2",
 #if defined(ENABLE_ALARM)
@@ -172,6 +172,13 @@ static const char gSubMenu_F_LOCK[6][4] = {
 	"438",
 };
 
+const char gSubMenu_Compand[3][6] =
+	{
+		"OFF",
+		"TX",
+		"TX/RX"
+	};
+
 bool gIsInSubMenu;
 
 uint8_t gMenuCursor;
@@ -299,6 +306,9 @@ void UI_DisplayMenu(void)
 		} else {
 			sprintf(String, "%d", gSubMenuSelection);
 		}
+		break;
+	case MENU_COMPAND:
+		strcpy(String, gSubMenu_Compand[gSubMenuSelection]);
 		break;
 
 	case MENU_BCL:

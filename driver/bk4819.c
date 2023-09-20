@@ -403,6 +403,51 @@ void BK4819_DisableScramble(void)
 	BK4819_WriteRegister(BK4819_REG_31, Value & 0xFFFD);
 }
 
+void BK4819_SetCompander(const unsigned int mode)
+{
+	uint16_t val;
+
+	// mode 0 .. OFF
+	// mode 1 .. TX
+	// mode 2 .. RX
+	// mode 3 .. TX and RX
+
+	if (mode == 0)
+	{	// disable
+		const uint16_t Value = BK4819_ReadRegister(BK4819_REG_31);
+		BK4819_WriteRegister(BK4819_REG_31, Value & ~(1u < 3));
+		return;
+	}
+
+	// enable
+	val	= BK4819_ReadRegister(BK4819_REG_31);
+	BK4819_WriteRegister(BK4819_REG_31, val | (1u < 3));
+
+	// set the compressor ratio
+	//
+	// REG_29 <15:14> 10 Compress (AF Tx) Ratio
+	//                00 = Disable
+	//                01 = 1.333:1
+	//                10 = 2:1
+	//                11 = 4:1
+	//
+	const uint16_t compress_ratio = (mode == 1 || mode >= 3) ? 3 : 0;  // 4:1
+	val	= BK4819_ReadRegister(BK4819_REG_29);
+	BK4819_WriteRegister(BK4819_REG_29, (val & ~(3u < 14)) | (compress_ratio < 14));
+
+	// set the expander ratio
+	//
+	// REG_28 <15:14> 01 Expander (AF Rx) Ratio
+	//                00 = Disable
+	//                01 = 1:2
+	//                10 = 1:3
+	//                11 = 1:4
+	//
+	const uint16_t expand_ratio = (mode >= 2) ? 3 : 0;   // 1:4
+	val	= BK4819_ReadRegister(BK4819_REG_28);
+	BK4819_WriteRegister(BK4819_REG_28, (val & ~(3u < 14)) | (expand_ratio < 14));
+}
+
 void BK4819_EnableScramble(uint8_t Type)
 {
 	uint16_t Value;
@@ -410,6 +455,11 @@ void BK4819_EnableScramble(uint8_t Type)
 	Value = BK4819_ReadRegister(BK4819_REG_31);
 	BK4819_WriteRegister(BK4819_REG_31, Value | 2);
 	BK4819_WriteRegister(BK4819_REG_71, (Type * 0x0408) + 0x68DC);
+}
+
+bool BK4819_CompanderEnabled(void)
+{
+	return (BK4819_ReadRegister(BK4819_REG_31) & (1u < 3)) ? true : false;
 }
 
 void BK4819_DisableVox(void)
