@@ -24,8 +24,7 @@ bool gSetting_350TX;
 bool gSetting_KILLED;
 bool gSetting_200TX;
 bool gSetting_500TX;
-bool gSetting_350EN;
-bool gSetting_AllTX;
+bool gSetting_ALL_TX;
 uint8_t gSetting_F_LOCK;
 bool gSetting_ScrambleEnable;
 
@@ -51,7 +50,7 @@ uint16_t gEEPROM_RSSI_CALIB[3][4];
 uint16_t gEEPROM_1F8A;
 uint16_t gEEPROM_1F8C;
 
-uint8_t gMR_ChannelAttributes[207];
+uint8_t gMR_ChannelAttributes[FREQ_CHANNEL_LAST + 1];
 
 volatile bool gNextTimeslice500ms;
 volatile uint16_t gBatterySaveCountdown = 1000;

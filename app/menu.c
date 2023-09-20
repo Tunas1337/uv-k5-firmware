@@ -141,10 +141,14 @@ int MENU_GetLimits(uint8_t Cursor, uint8_t *pMin, uint8_t *pMax)
 		*pMin = 0;
 		*pMax = 5;
 		break;
+	case MENU_MDF: 
+		*pMin = 0;
+		*pMax = 3;
+		break;
 	case MENU_TXP: case MENU_SFT_D:
 	case MENU_TDR: case MENU_WX:
 	case MENU_VOICE: case MENU_SC_REV:
-	case MENU_MDF: case MENU_PONMSG:
+    case MENU_PONMSG:
 	case MENU_ROGER:
 		*pMin = 0;
 		*pMax = 2;
@@ -175,7 +179,7 @@ int MENU_GetLimits(uint8_t Cursor, uint8_t *pMin, uint8_t *pMax)
 #endif
 	case MENU_RESET: case MENU_350TX:
 	case MENU_200TX: case MENU_500TX:
-	case MENU_350EN: case MENU_SCREN: case MENU_ALLTX:
+	case MENU_ALL_TX: case MENU_SCREN:
 		*pMin = 0;
 		*pMax = 1;
 		break;
@@ -361,12 +365,14 @@ void MENU_AcceptSetting(void)
 		return;
 
 	case MENU_WX:
+#if defined(ENABLE_NOAA)
 		if (IS_NOAA_CHANNEL(gEeprom.ScreenChannel[0])) {
 			return;
 		}
 		if (IS_NOAA_CHANNEL(gEeprom.ScreenChannel[1])) {
 			return;
 		}
+#endif
 		gEeprom.CROSS_BAND_RX_TX = gSubMenuSelection;
 		gFlagReconfigureVfos = true;
 		gRequestSaveSettings = true;
@@ -530,8 +536,8 @@ void MENU_AcceptSetting(void)
 		gSetting_500TX = gSubMenuSelection;
 		break;
 
-	case MENU_350EN:
-		gSetting_350EN = gSubMenuSelection;
+	case MENU_ALL_TX:
+		gSetting_ALL_TX = gSubMenuSelection;
 		gRequestSaveSettings = true;
 		gVfoConfigureMode = VFO_CONFIGURE_RELOAD;
 		gFlagResetVfos = true;
@@ -856,8 +862,8 @@ void MENU_ShowCurrentSetting(void)
 		gSubMenuSelection = gSetting_500TX;
 		break;
 
-	case MENU_350EN:
-		gSubMenuSelection = gSetting_350EN;
+	case MENU_ALL_TX:
+		gSubMenuSelection = gSetting_ALL_TX;
 		break;
 
 	case MENU_SCREN:

@@ -56,7 +56,7 @@ static const char MenuList[][7] = {
 	"NOAA_S",
 #endif
 	          "DEL-CH",  "RESET",  "350TX",
-	"F-LOCK", "200TX",   "500TX",  "350EN",
+	"F-LOCK", "200TX",   "500TX",  "ALL_TX",
 	// 0x38
 	"SCREN", "ALLTX"
 };
@@ -119,10 +119,11 @@ static const char gSubMenu_SC_REV[3][3] = {
 	"SE",
 };
 
-static const char gSubMenu_MDF[3][5] = {
+static const char gSubMenu_MDF[4][6] = {
 	"FREQ",
+	"CHAN",
 	"NAME",
-	"BOTH",
+    "NAME+F"
 };
 
 #if defined(ENABLE_ALARM)
@@ -336,7 +337,7 @@ void UI_DisplayMenu(void)
 	case MENU_350TX:
 	case MENU_200TX:
 	case MENU_500TX:
-	case MENU_350EN:
+	case MENU_ALL_TX:
 	case MENU_SCREN:
 	case MENU_ALLTX:
 		strcpy(String, gSubMenu_OFF_ON[gSubMenuSelection]);
