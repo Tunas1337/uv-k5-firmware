@@ -89,6 +89,7 @@ enum {
 extern bool gIsInSubMenu;
 
 extern const char gSubMenu_Compand[3][6];
+extern const char gSubMenu_BACK_LIGHT[6][4];
 extern uint8_t gMenuCursor;
 extern int8_t gMenuScrollDirection;
 extern uint32_t gSubMenuSelection;

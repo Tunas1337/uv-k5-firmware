@@ -179,6 +179,16 @@ const char gSubMenu_Compand[3][6] =
 		"TX/RX"
 	};
 
+const char gSubMenu_BACK_LIGHT[6][4] =
+	{
+		"OFF",
+		"10s",
+		"20s",
+		"40s",
+		"80s",
+		"ON"
+	};
+
 bool gIsInSubMenu;
 
 uint8_t gMenuCursor;

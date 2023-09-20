@@ -135,7 +135,7 @@ int MENU_GetLimits(uint8_t Cursor, uint8_t *pMin, uint8_t *pMax)
 		// Fallthrough
 	case MENU_ABR:
 		*pMin = 0;
-		*pMax = 60;
+		*pMax = ARRAY_SIZE(gSubMenu_BACK_LIGHT) - 1;
 		break;
 	case MENU_F_LOCK:
 		*pMin = 0;
