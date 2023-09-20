@@ -312,11 +312,7 @@ void UI_DisplayMenu(void)
 	case MENU_SCR:
 	case MENU_VOX:
 	case MENU_ABR:
-		if (gSubMenuSelection == 0) {
-			strcpy(String, "OFF");
-		} else {
-			sprintf(String, "%d", gSubMenuSelection);
-		}
+		strcpy(String, gSubMenu_BACK_LIGHT[gSubMenuSelection]);
 		break;
 	case MENU_COMPAND:
 		strcpy(String, gSubMenu_Compand[gSubMenuSelection]);

@@ -38,8 +38,6 @@
 #include "ui/menu.h"
 #include "ui/ui.h"
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-
 static const VOICE_ID_t MenuVoices[] = {
 	VOICE_ID_SQUELCH,
 	VOICE_ID_FREQUENCY_STEP,
@@ -536,13 +534,6 @@ void MENU_AcceptSetting(void)
 		gSetting_500TX = gSubMenuSelection;
 		break;
 
-	case MENU_ALL_TX:
-		gSetting_ALL_TX = gSubMenuSelection;
-		gRequestSaveSettings = true;
-		gVfoConfigureMode = VFO_CONFIGURE_RELOAD;
-		gFlagResetVfos = true;
-		return;
-
 	case MENU_SCREN:
 		gSetting_ScrambleEnable = gSubMenuSelection;
 		gRequestSaveSettings = true;
@@ -550,7 +541,7 @@ void MENU_AcceptSetting(void)
 		return;
 	
 	case MENU_ALLTX:
-		gSetting_AllTX = gSubMenuSelection;
+		gSetting_ALL_TX = gSubMenuSelection;
 		break;
 
 	default:
@@ -862,16 +853,12 @@ void MENU_ShowCurrentSetting(void)
 		gSubMenuSelection = gSetting_500TX;
 		break;
 
-	case MENU_ALL_TX:
+	case MENU_ALLTX:
 		gSubMenuSelection = gSetting_ALL_TX;
 		break;
 
 	case MENU_SCREN:
 		gSubMenuSelection = gSetting_ScrambleEnable;
-		break;
-	
-	case MENU_ALLTX:
-		gSubMenuSelection = gSetting_AllTX;
 		break;
 	}
 }
