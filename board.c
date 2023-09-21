@@ -43,6 +43,7 @@
 #if defined(ENABLE_OVERLAY)
 #include "sram-overlay.h"
 #endif
+#include "external/printf/printf.h"
 static const uint32_t gDefaultFrequencyTable[5] = {
 	14502500,
 	14552500,
@@ -470,7 +471,7 @@ void BOARD_ADC_Init(void)
 	ADC_Config_t Config;
 
 	Config.CLK_SEL = SYSCON_CLK_SEL_W_SARADC_SMPL_VALUE_DIV2;
-	Config.CH_SEL = ADC_CH4 | ADC_CH9;
+	Config.CH_SEL = ADC_CH4 | ADC_CH9 | ADC_CH13;
 	Config.AVG = SARADC_CFG_AVG_VALUE_8_SAMPLE;
 	Config.CONT = SARADC_CFG_CONT_VALUE_SINGLE;
 	Config.MEM_MODE = SARADC_CFG_MEM_MODE_VALUE_CHANNEL;
@@ -497,6 +498,8 @@ void BOARD_ADC_GetBatteryInfo(uint16_t *pVoltage, uint16_t *pCurrent)
 	}
 	*pVoltage = ADC_GetValue(ADC_CH4);
 	*pCurrent = ADC_GetValue(ADC_CH9);
+	uint16_t dieTemp = ((ADC_GetValue(ADC_CH13) * 760 / gBatteryCalibration[3]) - 760) * 100 / 27 + 2500;
+	printf("%d.%02d",dieTemp / 100, dieTemp % 100);
 }
 
 void BOARD_Init(void)
