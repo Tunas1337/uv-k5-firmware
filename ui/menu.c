@@ -462,6 +462,12 @@ void UI_DisplayMenu(void)
 				else gFrameBuffer[6-i][102+j] ^= 0b11111111;
 			}
 		}
+		// Draw the charging indicator over the battery if we're charging
+		// The charging indicator is 13x16, so we need 2 lines of 8 pixels to draw it.
+		if (gChargingWithTypeC) {
+			memcpy(gFrameBuffer[4]+103, BITMAP_SettingsBattCharging, 13);
+			memcpy(gFrameBuffer[5]+103, BITMAP_SettingsBattCharging+13, 13);
+		}
 		sprintf(String, "%d.%02dV", gBatteryVoltageAverage / 100, gBatteryVoltageAverage % 100);
 		break;
 
@@ -500,6 +506,11 @@ void UI_DisplayMenu(void)
 		if (strlen(gEeprom.DTMF_DOWN_CODE) > 8) {
 			UI_PrintString(gEeprom.DTMF_DOWN_CODE + 8, 0, 127, 3, 8, true);
 		}
+	}
+	// If we're in the voltage menu option, also print the current
+	if (gMenuCursor == MENU_VOL) {
+		sprintf(String, "%dmA", gBatteryCurrent);
+		UI_PrintString(String, 0, 127, 5, 8, true);
 	}
 	if (gMenuCursor == MENU_D_LIST && gIsDtmfContactValid) {
 		Contact[11] = 0;
