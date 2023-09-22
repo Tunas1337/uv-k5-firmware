@@ -350,16 +350,12 @@ void APP_StartListening(FUNCTION_Type_t Function)
 		}
 		if (gRxVfo->IsAM) {
 			BK4819_WriteRegister(BK4819_REG_48, 0xB3A8);
-			// PGA + MIXER + LNA + LNA_SHORT
-			BK4819_WriteRegister(BK4819_REG_13, 3u | (3u << 3) | (2u << 5) | (3u << 8));
 			gNeverUsed = 0;
 		} else {
 			BK4819_WriteRegister(BK4819_REG_48, 0xB000
 					| (gEeprom.VOLUME_GAIN << 4)
 					| (gEeprom.DAC_GAIN << 0)
 					);
-			// PGA + MIXER + LNA + LNA_SHORT
-			BK4819_WriteRegister(BK4819_REG_13, 0x03BE);
 		}
 		if (gVoiceWriteIndex == 0) {
 			if (gRxVfo->IsAM) {
