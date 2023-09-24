@@ -26,7 +26,9 @@
 #include "driver/gpio.h"
 #include "driver/system.h"
 #include "driver/systick.h"
+#if defined(ENABLE_UART)
 #include "driver/uart.h"
+#endif
 #include "helper/battery.h"
 #include "helper/boot.h"
 #include "misc.h"
@@ -35,11 +37,15 @@
 #include "ui/lock.h"
 #include "ui/welcome.h"
 
-static const char Version[] = "UV-K5 Firmware, v0.01 Open Edition\r\n";
+#if defined(ENABLE_UART)
+static const char Version[] = "UV-K5 Firmware, Open Edition, OEFW-"GIT_HASH"\r\n";
+#endif
 
 void _putchar(char c)
 {
+#if defined(ENABLE_UART)
 	UART_Send((uint8_t *)&c, 1);
+#endif
 }
 
 void Main(void)
@@ -61,8 +67,10 @@ void Main(void)
 	SYSTICK_Init();
 	BOARD_Init();
 
+#if defined(ENABLE_UART)
 	UART_Init();
 	UART_Send(Version, sizeof(Version));
+#endif
 
 	// Not implementing authentic device checks
 
@@ -96,7 +104,13 @@ void Main(void)
 		UI_DisplayWelcome();
 		BACKLIGHT_TurnOn();
 		SYSTEM_DelayMs(1000);
-		gMenuListCount = 51;
+		gMenuListCount = 49;
+#if defined(ENABLE_ALARM)
+		gMenuListCount++;
+#endif
+#if defined(ENABLE_NOAA)
+		gMenuListCount++;
+#endif
 
 		BootMode = BOOT_GetMode();
 		if (gEeprom.POWER_ON_PASSWORD < 1000000) {
@@ -118,7 +132,9 @@ void Main(void)
 			AUDIO_SetVoiceID(1, VOICE_ID_FREQUENCY_MODE);
 		}
 		AUDIO_PlaySingleVoice(0);
+#if defined(ENABLE_NOAA)
 		RADIO_ConfigureNOAA();
+#endif
 	}
 
 	while (1) {

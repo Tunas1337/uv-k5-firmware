@@ -17,7 +17,9 @@
 #include "app/action.h"
 #include "app/app.h"
 #include "app/dtmf.h"
+#if defined(ENABLE_FMRADIO)
 #include "app/fm.h"
+#endif
 #include "app/scanner.h"
 #include "audio.h"
 #include "bsp/dp32g030/gpio.h"
@@ -66,9 +68,11 @@ static void ACTION_Monitor(void)
 {
 	if (gCurrentFunction != FUNCTION_MONITOR) {
 		RADIO_SelectVfos();
+#if defined(ENABLE_NOAA)
 		if (gRxVfo->CHANNEL_SAVE >= NOAA_CHANNEL_FIRST && gIsNoaaMode) {
 			gNoaaChannel = gRxVfo->CHANNEL_SAVE - NOAA_CHANNEL_FIRST;
 		}
+#endif
 		RADIO_SetupRegisters(true);
 		APP_StartListening(FUNCTION_MONITOR);
 		return;
@@ -78,21 +82,28 @@ static void ACTION_Monitor(void)
 		gScheduleScanListen = false;
 		gScanPauseMode = true;
 	}
+#if defined(ENABLE_NOAA)
 	if (gEeprom.DUAL_WATCH == DUAL_WATCH_OFF && gIsNoaaMode) {
 		gNOAA_Countdown = 500;
 		gScheduleNOAA = false;
 	}
+#endif
 	RADIO_SetupRegisters(true);
+#if defined(ENABLE_FMRADIO)
 	if (gFmRadioMode) {
 		FM_Start();
 		gRequestDisplayScreen = DISPLAY_FM;
 	} else {
+#endif
 		gRequestDisplayScreen = gScreenToDisplay;
+#if defined(ENABLE_FMRADIO)
 	}
+#endif
 }
 
 void ACTION_Scan(bool bRestart)
 {
+#if defined(ENABLE_FMRADIO)
 	if (gFmRadioMode) {
 		if (gCurrentFunction != FUNCTION_RECEIVE && gCurrentFunction != FUNCTION_MONITOR && gCurrentFunction != FUNCTION_TRANSMIT) {
 			uint16_t Frequency;
@@ -117,7 +128,9 @@ void ACTION_Scan(bool bRestart)
 				gAnotherVoiceID = VOICE_ID_SCANNING_BEGIN;
 			}
 		}
-	} else if (gScreenToDisplay != DISPLAY_SCANNER) {
+	} else
+#endif
+	if (gScreenToDisplay != DISPLAY_SCANNER) {
 		RADIO_SelectVfos();
 		if (IS_NOT_NOAA_CHANNEL(gRxVfo->CHANNEL_SAVE)) {
 			GUI_SelectNextDisplay(DISPLAY_MAIN);
@@ -142,19 +155,29 @@ void ACTION_Vox(void)
 	gUpdateStatus = true;
 }
 
+#if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
 static void ACTION_AlarmOr1750(bool b1750)
 {
 	gInputBoxIndex = 0;
+#if defined(ENABLE_ALARM) && defined(ENABLE_TX1750)
 	if (b1750) {
 		gAlarmState = ALARM_STATE_TX1750;
 	} else {
 		gAlarmState = ALARM_STATE_TXALARM;
 	}
 	gAlarmRunningCounter = 0;
+#elif defined(ENABLE_ALARM)
+	gAlarmState = ALARM_STATE_TXALARM;
+	gAlarmRunningCounter = 0;
+#else
+	gAlarmState = ALARM_STATE_TX1750;
+#endif
 	gFlagPrepareTX = true;
 	gRequestDisplayScreen = DISPLAY_MAIN;
 }
+#endif
 
+#if defined(ENABLE_FMRADIO)
 void ACTION_FM(void)
 {
 	if (gCurrentFunction != FUNCTION_TRANSMIT && gCurrentFunction != FUNCTION_MONITOR) {
@@ -173,6 +196,7 @@ void ACTION_FM(void)
 		gRequestDisplayScreen = DISPLAY_FM;
 	}
 }
+#endif
 
 void ACTION_Handle(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
@@ -236,13 +260,19 @@ void ACTION_Handle(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		ACTION_Vox();
 		break;
 	case 6:
+#if defined(ENABLE_ALARM)
 		ACTION_AlarmOr1750(false);
+#endif
 		break;
 	case 7:
+#if defined(ENABLE_FMRADIO)
 		ACTION_FM();
+#endif
 		break;
 	case 8:
+#if defined(ENABLE_TX1750)
 		ACTION_AlarmOr1750(true);
+#endif
 		break;
 	}
 }

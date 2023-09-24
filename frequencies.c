@@ -48,6 +48,7 @@ const uint32_t UpperLimitFrequencyBandTable[7] = {
 	60000000,
 };
 
+#if defined(ENABLE_NOAA)
 const uint32_t NoaaFrequencyTable[10] = {
 	16255000,
 	16240000,
@@ -60,14 +61,16 @@ const uint32_t NoaaFrequencyTable[10] = {
 	16177500,
 	16327500,
 };
+#endif
 
-const uint16_t StepFrequencyTable[6] = {
+const uint16_t StepFrequencyTable[7] = {
 	250,
 	500,
 	625,
 	1000,
 	1250,
-	2500
+	2500,
+	833,
 };
 
 FREQUENCY_Band_t FREQUENCY_GetBand(uint32_t Frequency)
@@ -126,7 +129,7 @@ int FREQUENCY_Check(VFO_Info_t *pInfo)
 {
 	uint32_t Frequency;
 
-	if (pInfo->CHANNEL_SAVE >= NOAA_CHANNEL_FIRST) {
+	if (pInfo->CHANNEL_SAVE > FREQ_CHANNEL_LAST) {
 		return -1;
 	}
 	Frequency = pInfo->pTX->Frequency;

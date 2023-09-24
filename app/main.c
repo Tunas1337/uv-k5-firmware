@@ -17,7 +17,9 @@
 #include <string.h>
 #include "app/action.h"
 #include "app/app.h"
+#if defined(ENABLE_FMRADIO)
 #include "app/fm.h"
+#endif
 #include "app/generic.h"
 #include "app/main.h"
 #include "app/scanner.h"
@@ -79,7 +81,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			}
 			gInputBoxIndex = 0;
 			NUMBER_Get(gInputBox, &Frequency);
-			if (gSetting_350EN || (4999990 < (Frequency - 35000000))) {
+			if (gSetting_350EN || (Frequency < 35000000 || Frequency > 39999990)) {
 				uint8_t i;
 
 				for (i = 0; i < 7; i++) {
@@ -104,6 +106,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 				}
 			}
 		} else {
+#if defined(ENABLE_NOAA)
 			uint8_t Channel;
 
 			if (gInputBoxIndex != 2) {
@@ -113,7 +116,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			}
 			gInputBoxIndex = 0;
 			Channel = (gInputBox[0] * 10) + gInputBox[1];
-			if (Channel >= 1 && Channel <= 10) {
+			if (Channel >= 1 && Channel <= ARRAY_SIZE(NoaaFrequencyTable)) {
 				Channel += NOAA_CHANNEL_FIRST;
 				gAnotherVoiceID = (VOICE_ID_t)Key;
 				gEeprom.NoaaChannel[Vfo] = Channel;
@@ -122,6 +125,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 				gVfoConfigureMode = VFO_CONFIGURE_RELOAD;
 				return;
 			}
+#endif
 		}
 		gRequestDisplayScreen = DISPLAY_MAIN;
 		gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
@@ -131,7 +135,9 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 	gUpdateStatus = true;
 	switch (Key) {
 	case KEY_0:
+#if defined(ENABLE_FMRADIO)
 		ACTION_FM();
+#endif
 		break;
 
 	case KEY_1:
@@ -212,6 +218,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		break;
 
 	case KEY_5:
+#if defined(ENABLE_NOAA)
 		if (IS_NOT_NOAA_CHANNEL(gTxVfo->CHANNEL_SAVE)) {
 			gEeprom.ScreenChannel[Vfo] = gEeprom.NoaaChannel[gEeprom.TX_CHANNEL];
 		} else {
@@ -220,6 +227,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		}
 		gRequestSaveVFO = true;
 		gVfoConfigureMode = VFO_CONFIGURE_RELOAD;
+#endif
 		break;
 
 	case KEY_6:
@@ -261,24 +269,26 @@ static void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 {
 	if (!bKeyHeld && bKeyPressed) {
 		gBeepToPlay = BEEP_1KHZ_60MS_OPTIONAL;
-		if (!gFmRadioMode) {
-			if (gScanState == SCAN_OFF) {
-				if (gInputBoxIndex == 0) {
-					return;
-				}
-				gInputBoxIndex--;
-				gInputBox[gInputBoxIndex] = 10;
-				if (gInputBoxIndex == 0) {
-					gAnotherVoiceID = VOICE_ID_CANCEL;
-				}
-			} else {
-				SCANNER_Stop();
-				gAnotherVoiceID = VOICE_ID_SCANNING_STOP;
-			}
-			gRequestDisplayScreen = DISPLAY_MAIN;
+#if defined(ENABLE_FMRADIO)
+		if (gFmRadioMode) {
+			ACTION_FM();
 			return;
 		}
-		ACTION_FM();
+#endif
+		if (gScanState == SCAN_OFF) {
+			if (gInputBoxIndex == 0) {
+				return;
+			}
+			gInputBoxIndex--;
+			gInputBox[gInputBoxIndex] = 10;
+			if (gInputBoxIndex == 0) {
+				gAnotherVoiceID = VOICE_ID_CANCEL;
+			}
+		} else {
+			SCANNER_Stop();
+			gAnotherVoiceID = VOICE_ID_SCANNING_STOP;
+		}
+		gRequestDisplayScreen = DISPLAY_MAIN;
 	}
 }
 
@@ -397,9 +407,11 @@ static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 				gAnotherVoiceID = (VOICE_ID_t)0xFE;
 			}
 		} else {
+#if defined(ENABLE_NOAA)
 			Channel = NOAA_CHANNEL_FIRST + NUMBER_AddWithWraparound(gEeprom.ScreenChannel[gEeprom.TX_CHANNEL] - NOAA_CHANNEL_FIRST, Direction, 0, 9);
 			gEeprom.NoaaChannel[gEeprom.TX_CHANNEL] = Channel;
 			gEeprom.ScreenChannel[gEeprom.TX_CHANNEL] = Channel;
+#endif
 		}
 		gRequestSaveVFO = true;
 		gVfoConfigureMode = VFO_CONFIGURE_RELOAD;
@@ -411,12 +423,14 @@ static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 
 void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
+#if defined(ENABLE_FMRADIO)
 	if (gFmRadioMode && Key != KEY_PTT && Key != KEY_EXIT) {
 		if (!bKeyHeld && bKeyPressed) {
 			gBeepToPlay = BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL;
 		}
 		return;
 	}
+#endif
 	if (gDTMF_InputMode && !bKeyHeld && bKeyPressed) {
 		char Character = DTMF_GetCharacter(Key);
 		if (Character != 0xFF) {

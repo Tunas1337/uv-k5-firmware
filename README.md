@@ -5,9 +5,15 @@ It is dedicated to understanding how the radio works and help developers making 
 It is by no means fully understood or has all variables/functions properly named, as this is best effort only.
 As a result, this repository will not include any customisations or improvements over the original firmware.
 
-You can find such firmware at the following repositories:
+You can find an alternate branch called "fixes" that contains fixes for real bugs present in the original firmware.
+This branch will also accumulate fixes/improvements from newer releases by QS (for example v2.01.31).
+
+For improved/better firmware and new features, you can find the following repositories by other collaborators:
 
 * https://github.com/fagci/uv-k5-firmware-fagci-mod
+* https://github.com/OneOfEleven/uv-k5-firmware-custom
+* https://github.com/Tunas1337/uv-k5-firmware (Check the branches)
+* https://github.com/rebezhir/openquack for Russian users
 
 # Compiler
 
@@ -23,6 +29,24 @@ git submodule update --init --recursive --depth=1
 make
 ```
 
+# Flashing with the official updater
+
+* Use the firmware.packed.bin file
+
+# Flashing with [k5prog](https://github.com/piotr022/k5prog)
+
+* ./k5prog -F -YYY -b firmware.bin
+
+# Flashing with SWD
+
+* If you own a JLink or compatible device and want to use the Segger software, you can find a flash loader [here](https://github.com/DualTachyon/dp32g030-flash-loader)
+* If you want to use OpenOCD instead, you can use run "make flash" off this repo.
+* The DP32G030 has flash masking to move the bootloader out of the way. Do not try to flash your own way outside of the above methods or risk losing your bootloader.
+
+# Support
+
+* If you like my work, you can support me through https://ko-fi.com/DualTachyon
+
 # Credits
 
 Many thanks to various people on Telegram for putting up with me during this effort and helping:
@@ -35,6 +59,7 @@ Many thanks to various people on Telegram for putting up with me during this eff
 * [@Matoz](https://github.com/spm81)
 * @Davide
 * @Ismo OH2FTG
+* [OneOfEleven](https://github.com/OneOfEleven)
 * and others I forget
 
 # License

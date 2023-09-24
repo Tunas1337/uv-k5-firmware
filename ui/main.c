@@ -130,9 +130,13 @@ void UI_DisplayMain(void)
 		uint32_t SomeValue = 0;
 
 		if (gCurrentFunction == FUNCTION_TRANSMIT) {
+#if defined(ENABLE_ALARM)
 			if (gAlarmState == ALARM_STATE_ALARM) {
 				SomeValue = 2;
 			} else {
+#else
+			if (1) {
+#endif
 				if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
 					Channel = gEeprom.RX_CHANNEL;
 				} else {
@@ -166,6 +170,7 @@ void UI_DisplayMain(void)
 			c = (gEeprom.ScreenChannel[i] - FREQ_CHANNEL_FIRST) + 1;
 			UI_DisplaySmallDigits(1, &c, 22, Line + 1);
 		} else {
+#if defined(ENABLE_NOAA)
 			memcpy(pLine1 + 7, BITMAP_NarrowBand, sizeof(BITMAP_NarrowBand));
 			if (gInputBoxIndex == 0 || gEeprom.TX_CHANNEL != i) {
 				NUMBER_ToDigits((gEeprom.ScreenChannel[i] - NOAA_CHANNEL_FIRST) + 1, String);
@@ -174,11 +179,13 @@ void UI_DisplayMain(void)
 				String[7] = gInputBox[1];
 			}
 			UI_DisplaySmallDigits(2, String + 6, 15, Line + 1);
+#endif
 		}
 
 		// 0x8FEC
 
 		uint8_t State = VfoState[i];
+#if defined(ENABLE_ALARM)
 		if (gCurrentFunction == FUNCTION_TRANSMIT && gAlarmState == ALARM_STATE_ALARM) {
 			if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
 				Channel = gEeprom.RX_CHANNEL;
@@ -189,6 +196,7 @@ void UI_DisplayMain(void)
 				State = VFO_STATE_ALARM;
 			}
 		}
+#endif
 		if (State) {
 			uint8_t Width = 10;
 
@@ -207,9 +215,11 @@ void UI_DisplayMain(void)
 			case 4:
 				strcpy(String, "TIMEOUT");
 				break;
+#if defined(ENABLE_ALARM)
 			case 5:
 				strcpy(String, "ALARM");
 				break;
+#endif
 			case 6:
 				sprintf(String, "VOL HIGH");
 				Width = 8;
@@ -220,49 +230,7 @@ void UI_DisplayMain(void)
 			if (gInputBoxIndex && IS_FREQ_CHANNEL(gEeprom.ScreenChannel[i]) && gEeprom.TX_CHANNEL == i) {
 				UI_DisplayFrequency(gInputBox, 31, i * 4, true, false);
 			} else {
-				if (IS_MR_CHANNEL(gEeprom.ScreenChannel[i])) {
-					switch (gEeprom.CHANNEL_DISPLAY_MODE) {
-					case MDF_FREQUENCY:
-						if (gCurrentFunction == FUNCTION_TRANSMIT) {
-							if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
-								Channel = gEeprom.RX_CHANNEL;
-							} else {
-								Channel = gEeprom.TX_CHANNEL;
-							}
-							if (Channel == i) {
-								NUMBER_ToDigits(gEeprom.VfoInfo[i].pTX->Frequency, String);
-							} else {
-								NUMBER_ToDigits(gEeprom.VfoInfo[i].pRX->Frequency, String);
-							}
-						} else {
-							NUMBER_ToDigits(gEeprom.VfoInfo[i].pRX->Frequency, String);
-						}
-						UI_DisplayFrequency(String, 31, i * 4, false, false);
-						if (IS_MR_CHANNEL(gEeprom.ScreenChannel[i])) {
-							const uint8_t Attributes = gMR_ChannelAttributes[gEeprom.ScreenChannel[i]];
-							if (Attributes & MR_CH_SCANLIST1) {
-								memcpy(pLine0 + 113, BITMAP_ScanList, sizeof(BITMAP_ScanList));
-							}
-							if (Attributes & MR_CH_SCANLIST2) {
-								memcpy(pLine0 + 120, BITMAP_ScanList, sizeof(BITMAP_ScanList));
-							}
-						}
-						UI_DisplaySmallDigits(2, String + 6, 112, Line + 1);
-						break;
-					case MDF_CHANNEL:
-						sprintf(String, "CH-%03d", gEeprom.ScreenChannel[i] + 1);
-						UI_PrintString(String, 31, 112, i * 4, 8, true);
-						break;
-					case MDF_NAME:
-						if(gEeprom.VfoInfo[i].Name[0] == 0 || gEeprom.VfoInfo[i].Name[0] == 0xFF) {
-							sprintf(String, "CH-%03d", gEeprom.ScreenChannel[i] + 1);
-							UI_PrintString(String, 31, 112, i * 4, 8, true);
-						} else {
-							UI_PrintString(gEeprom.VfoInfo[i].Name, 31, 112, i * 4, 8, true);
-						}
-						break;
-					}
-				} else {
+				if (!IS_MR_CHANNEL(gEeprom.ScreenChannel[i]) || gEeprom.CHANNEL_DISPLAY_MODE == MDF_FREQUENCY) {
 					if (gCurrentFunction == FUNCTION_TRANSMIT) {
 						if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
 							Channel = gEeprom.RX_CHANNEL;
@@ -288,6 +256,16 @@ void UI_DisplayMain(void)
 						}
 					}
 					UI_DisplaySmallDigits(2, String + 6, 112, Line + 1);
+				} else if (gEeprom.CHANNEL_DISPLAY_MODE == MDF_CHANNEL) {
+					sprintf(String, "CH-%03d", gEeprom.ScreenChannel[i] + 1);
+					UI_PrintString(String, 31, 112, i * 4, 8, true);
+				} else if (gEeprom.CHANNEL_DISPLAY_MODE == MDF_NAME) {
+					if(gEeprom.VfoInfo[i].Name[0] == 0 || gEeprom.VfoInfo[i].Name[0] == 0xFF) {
+						sprintf(String, "CH-%03d", gEeprom.ScreenChannel[i] + 1);
+						UI_PrintString(String, 31, 112, i * 4, 8, true);
+					} else {
+						UI_PrintString(gEeprom.VfoInfo[i].Name, 31, 112, i * 4, 8, true);
+					}
 				}
 			}
 		}

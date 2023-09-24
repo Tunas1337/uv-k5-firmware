@@ -15,6 +15,9 @@
  */
 
 #include <string.h>
+#if !defined(ENABLE_OVERLAY)
+#include "ARMCM0.h"
+#endif
 #include "app/dtmf.h"
 #include "app/generic.h"
 #include "app/menu.h"
@@ -28,7 +31,9 @@
 #include "frequencies.h"
 #include "misc.h"
 #include "settings.h"
+#if defined(ENABLE_OVERLAY)
 #include "sram-overlay.h"
+#endif
 #include "ui/inputbox.h"
 #include "ui/menu.h"
 #include "ui/ui.h"
@@ -98,7 +103,7 @@ void MENU_StartCssScan(int8_t Direction)
 	gCssScanMode = CSS_SCAN_MODE_SCANNING;
 	gMenuScrollDirection = Direction;
 	RADIO_SelectVfos();
-	MENU_SelectNextDCS();
+	MENU_SelectNextCode();
 	ScanPauseDelayIn10msec = 50;
 	gScheduleScanListen = false;
 }
@@ -146,9 +151,15 @@ int MENU_GetLimits(uint8_t Cursor, uint8_t *pMin, uint8_t *pMax)
 	case MENU_W_N: case MENU_BCL:
 	case MENU_BEEP: case MENU_AUTOLK:
 	case MENU_S_ADD1: case MENU_S_ADD2:
-	case MENU_STE: case MENU_AL_MOD:
+	case MENU_STE:
+#if defined(ENABLE_ALARM)
+	case MENU_AL_MOD:
+#endif
 	case MENU_D_ST: case MENU_D_DCD:
-	case MENU_AM: case MENU_NOAA_S:
+	case MENU_AM:
+#if defined(ENABLE_NOAA)
+	case MENU_NOAA_S:
+#endif
 	case MENU_RESET: case MENU_350TX:
 	case MENU_200TX: case MENU_500TX:
 	case MENU_350EN: case MENU_SCREN:
@@ -336,12 +347,14 @@ void MENU_AcceptSetting(void)
 		return;
 
 	case MENU_WX:
+#if defined(ENABLE_NOAA)
 		if (IS_NOAA_CHANNEL(gEeprom.ScreenChannel[0])) {
 			return;
 		}
 		if (IS_NOAA_CHANNEL(gEeprom.ScreenChannel[1])) {
 			return;
 		}
+#endif
 		gEeprom.CROSS_BAND_RX_TX = gSubMenuSelection;
 		gFlagReconfigureVfos = true;
 		gRequestSaveSettings = true;
@@ -412,9 +425,11 @@ void MENU_AcceptSetting(void)
 		gEeprom.SCAN_LIST_DEFAULT = gSubMenuSelection - 1;
 		break;
 
+#if defined(ENABLE_ALARM)
 	case MENU_AL_MOD:
 		gEeprom.ALARM_MODE = gSubMenuSelection;
 		break;
+#endif
 
 	case MENU_D_ST:
 		gEeprom.DTMF_SIDE_TONE = gSubMenuSelection;
@@ -466,11 +481,13 @@ void MENU_AcceptSetting(void)
 		gRequestSaveChannel = 1;
 		return;
 
+#if defined(ENABLE_NOAA)
 	case MENU_NOAA_S:
 		gEeprom.NOAA_AUTO_SCAN = gSubMenuSelection;
 		gRequestSaveSettings = true;
 		gFlagReconfigureVfos = true;
 		return;
+#endif
 
 	case MENU_DEL_CH:
 		SETTINGS_UpdateChannel(gSubMenuSelection, NULL, false);
@@ -518,7 +535,7 @@ void MENU_AcceptSetting(void)
 	gRequestSaveSettings = true;
 }
 
-void MENU_SelectNextDCS(void)
+void MENU_SelectNextCode(void)
 {
 	uint8_t UpperLimit;
 
@@ -743,9 +760,11 @@ void MENU_ShowCurrentSetting(void)
 		gSubMenuSelection = RADIO_FindNextChannel(0, 1, true, 1);
 		break;
 
+#if defined(ENABLE_ALARM)
 	case MENU_AL_MOD:
 		gSubMenuSelection = gEeprom.ALARM_MODE;
 		break;
+#endif
 
 	case MENU_D_ST:
 		gSubMenuSelection = gEeprom.DTMF_SIDE_TONE;
@@ -787,9 +806,11 @@ void MENU_ShowCurrentSetting(void)
 		gSubMenuSelection = gTxVfo->AM_CHANNEL_MODE;
 		break;
 
+#if defined(ENABLE_NOAA)
 	case MENU_NOAA_S:
 		gSubMenuSelection = gEeprom.NOAA_AUTO_SCAN;
 		break;
+#endif
 
 	case MENU_DEL_CH:
 		gSubMenuSelection = RADIO_FindNextChannel(gEeprom.MrChannel[0], 1, false, 1);
@@ -980,7 +1001,11 @@ static void MENU_Key_MENU(bool bKeyPressed, bool bKeyHeld)
 						AUDIO_SetVoiceID(0, VOICE_ID_CONFIRM);
 						AUDIO_PlaySingleVoice(true);
 						MENU_AcceptSetting();
+#if defined(ENABLE_OVERLAY)
 						overlay_FLASH_RebootToBootloader();
+#else
+						NVIC_SystemReset();
+#endif
 					}
 					gFlagAcceptSetting = true;
 					gIsInSubMenu = false;

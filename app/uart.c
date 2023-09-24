@@ -15,7 +15,12 @@
  */
 
 #include <string.h>
+#if !defined(ENABLE_OVERLAY)
+#include "ARMCM0.h"
+#endif
+#if defined(ENABLE_FMRADIO)
 #include "app/fm.h"
+#endif
 #include "app/uart.h"
 #include "board.h"
 #include "bsp/dp32g030/dma.h"
@@ -29,7 +34,9 @@
 #include "functions.h"
 #include "misc.h"
 #include "settings.h"
+#if defined(ENABLE_OVERLAY)
 #include "sram-overlay.h"
+#endif
 #include "version.h"
 #include "aircopy.h"
 
@@ -221,7 +228,9 @@ static void CMD_0514(const uint8_t *pBuffer)
 	const CMD_0514_t *pCmd = (const CMD_0514_t *)pBuffer;
 
 	Timestamp = pCmd->Timestamp;
+#if defined(ENABLE_FMRADIO)
 	gFmRadioCountdown = 4;
+#endif
 	GPIO_ClearBit(&GPIOB->DATA, GPIOB_PIN_BACKLIGHT);
 	SendVersion();
 }
@@ -246,7 +255,9 @@ static void CMD_051B(const uint8_t *pBuffer)
 		return;
 	}
 
+#if defined(ENABLE_FMRADIO)
 	gFmRadioCountdown = 4;
+#endif
 	memset(&Reply, 0, sizeof(Reply));
 	Reply.Header.ID = 0x051C;
 	Reply.Header.Size = pCmd->Size + 4;
@@ -277,7 +288,9 @@ static void CMD_051D(const uint8_t *pBuffer)
 
 	bReloadEeprom = false;
 
+#if defined(ENABLE_FMRADIO)
 	gFmRadioCountdown = 4;
+#endif
 	Reply.Header.ID = 0x051E;
 	Reply.Header.Size = sizeof(Reply.Data);
 	Reply.Data.Offset = pCmd->Offset;
@@ -342,7 +355,9 @@ static void CMD_052D(const uint8_t *pBuffer)
 	REPLY_052D_t Reply;
 	bool bIsLocked;
 
+#if defined(ENABLE_FMRADIO)
 	gFmRadioCountdown = 4;
+#endif
 	Reply.Header.ID = 0x052E;
 	Reply.Header.Size = sizeof(Reply.Data);
 
@@ -384,7 +399,9 @@ static void CMD_052F(const uint8_t *pBuffer)
 	gEeprom.VfoInfo[0].FREQUENCY_DEVIATION_SETTING = FREQUENCY_DEVIATION_OFF;
 	gEeprom.VfoInfo[0].DTMF_PTT_ID_TX_MODE = PTT_ID_OFF;
 	gEeprom.VfoInfo[0].DTMF_DECODING_ENABLE = false;
+#if defined(ENABLE_NOAA)
 	gIsNoaaMode = false;
+#endif
 	if (gCurrentFunction == FUNCTION_POWER_SAVE) {
 		FUNCTION_Select(FUNCTION_FOREGROUND);
 	}
@@ -530,7 +547,11 @@ void UART_HandleCommand(void)
 		break;
 
 	case 0x05DD:
+#if defined(ENABLE_OVERLAY)
 		overlay_FLASH_RebootToBootloader();
+#else
+		NVIC_SystemReset();
+#endif
 		break;
 	}
 }

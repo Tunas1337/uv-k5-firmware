@@ -16,7 +16,9 @@
 
 #include <string.h>
 #include "app/dtmf.h"
+#if defined(ENABLE_FMRADIO)
 #include "app/fm.h"
+#endif
 #include "audio.h"
 #include "bsp/dp32g030/gpio.h"
 #include "dcs.h"
@@ -93,7 +95,7 @@ uint8_t RADIO_FindNextChannel(uint8_t Channel, int8_t Direction, bool bCheckScan
 {
 	uint8_t i;
 
-	for (i = 0; i < 200; i++) {
+	for (i = 0; i <= MR_CHANNEL_LAST; i++) {
 		if (Channel == 0xFF) {
 			Channel = MR_CHANNEL_LAST;
 		} else if (Channel > MR_CHANNEL_LAST) {
@@ -152,6 +154,7 @@ void RADIO_ConfigureChannel(uint8_t VFO, uint32_t Arg)
 
 	Channel = gEeprom.ScreenChannel[VFO];
 	if (IS_VALID_CHANNEL(Channel)) {
+#if defined(ENABLE_NOAA)
 		if (Channel >= NOAA_CHANNEL_FIRST) {
 			RADIO_InitInfo(pRadio, gEeprom.ScreenChannel[VFO], 2, NoaaFrequencyTable[Channel - NOAA_CHANNEL_FIRST]);
 			if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
@@ -161,6 +164,7 @@ void RADIO_ConfigureChannel(uint8_t VFO, uint32_t Arg)
 			gEeprom.CROSS_BAND_RX_TX = CROSS_BAND_OFF;
 			return;
 		}
+#endif
 		if (IS_MR_CHANNEL(Channel)) {
 			Channel = RADIO_FindNextChannel(Channel, RADIO_CHANNEL_UP, false, VFO);
 			if (Channel == 0xFF) {
@@ -318,7 +322,6 @@ void RADIO_ConfigureChannel(uint8_t VFO, uint32_t Arg)
 	} else if (Channel >= FREQ_CHANNEL_FIRST) {
 		pRadio->ConfigRX.Frequency = FREQUENCY_FloorToStep(pRadio->ConfigRX.Frequency, gEeprom.VfoInfo[VFO].StepFrequency, gLowerLimitFrequencyBandTable[Band]);
 	}
-	pRadio->ConfigRX.Frequency = Frequency;
 
 	if (Frequency >= 10800000 && Frequency <= 13599990) {
 		gEeprom.VfoInfo[VFO].FREQUENCY_DEVIATION_SETTING = FREQUENCY_DEVIATION_OFF;
@@ -503,11 +506,15 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 	}
 	BK4819_WriteRegister(BK4819_REG_3F, 0);
 	BK4819_WriteRegister(BK4819_REG_7D, gEeprom.MIC_SENSITIVITY_TUNING | 0xE940);
+#if defined(ENABLE_NOAA)
 	if (IS_NOT_NOAA_CHANNEL(gRxVfo->CHANNEL_SAVE) || !gIsNoaaMode) {
 		Frequency = gRxVfo->pRX->Frequency;
 	} else {
 		Frequency = NoaaFrequencyTable[gNoaaChannel];
 	}
+#else
+	Frequency = gRxVfo->pRX->Frequency;
+#endif
 	BK4819_SetFrequency(Frequency);
 	BK4819_SetupSquelch(
 			gRxVfo->SquelchOpenRSSIThresh, gRxVfo->SquelchCloseRSSIThresh,
@@ -582,7 +589,11 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 			;
 	}
 
-	if (gEeprom.VOX_SWITCH && !gFmRadioMode && IS_NOT_NOAA_CHANNEL(gCurrentVfo->CHANNEL_SAVE) && !gCurrentVfo->IsAM) {
+	if (gEeprom.VOX_SWITCH
+#if defined(ENABLE_FMRADIO)
+		&& !gFmRadioMode
+#endif
+		&& IS_NOT_NOAA_CHANNEL(gCurrentVfo->CHANNEL_SAVE) && !gCurrentVfo->IsAM) {
 		BK4819_EnableVox(gEeprom.VOX1_THRESHOLD, gEeprom.VOX0_THRESHOLD);
 		InterruptMask |= 0
 			| BK4819_REG_3F_VOX_FOUND
@@ -606,6 +617,7 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 	}
 }
 
+#if defined(ENABLE_NOAA)
 void RADIO_ConfigureNOAA(void)
 {
 	uint8_t ChanAB;
@@ -640,6 +652,7 @@ void RADIO_ConfigureNOAA(void)
 		gIsNoaaMode = false;
 	}
 }
+#endif
 
 void RADIO_SetTxParameters(void)
 {
@@ -690,7 +703,9 @@ void RADIO_SetVfoState(VfoState_t State)
 	if (State == VFO_STATE_NORMAL) {
 		VfoState[0] = VFO_STATE_NORMAL;
 		VfoState[1] = VFO_STATE_NORMAL;
+#if defined(ENABLE_FMRADIO)
 		gFM_ResumeCountdown = 0;
+#endif
 	} else {
 		if (State == VFO_STATE_VOL_HIGH) {
 			VfoState[0] = VFO_STATE_VOL_HIGH;
@@ -705,7 +720,9 @@ void RADIO_SetVfoState(VfoState_t State)
 			}
 			VfoState[Channel] = State;
 		}
+#if defined(ENABLE_FMRADIO)
 		gFM_ResumeCountdown = 5;
+#endif
 	}
 	gUpdateDisplay = true;
 }
@@ -722,7 +739,18 @@ void RADIO_PrepareTX(void)
 		gRxVfoIsActive = true;
 	}
 	RADIO_SelectCurrentVfo();
-	if (gAlarmState == ALARM_STATE_OFF || gAlarmState == ALARM_STATE_TX1750 || (gAlarmState == ALARM_STATE_ALARM && gEeprom.ALARM_MODE == ALARM_MODE_TONE)) {
+#if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
+	if (gAlarmState == ALARM_STATE_OFF
+#if defined(ENABLE_TX1750)
+		|| gAlarmState == ALARM_STATE_TX1750
+#endif
+#if defined(ENABLE_ALARM)
+		|| (gAlarmState == ALARM_STATE_ALARM && gEeprom.ALARM_MODE == ALARM_MODE_TONE)
+#endif
+		) {
+#else
+	if (1) {
+#endif
 		VfoState_t State;
 
 		if (!FREQUENCY_Check(gCurrentVfo)) {
@@ -739,7 +767,9 @@ void RADIO_PrepareTX(void)
 			State = VFO_STATE_TX_DISABLE;
 		}
 		RADIO_SetVfoState(State);
+#if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
 		gAlarmState = ALARM_STATE_OFF;
+#endif
 		AUDIO_PlayBeep(BEEP_500HZ_60MS_DOUBLE_BEEP_OPTIONAL);
 		gDTMF_ReplyState = DTMF_REPLY_NONE;
 		return;
@@ -757,11 +787,15 @@ Skip:
 		}
 	}
 	FUNCTION_Select(FUNCTION_TRANSMIT);
+#if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
 	if (gAlarmState == ALARM_STATE_OFF) {
 		gTxTimerCountdown = gEeprom.TX_TIMEOUT_TIMER * 120;
 	} else {
 		gTxTimerCountdown = 0;
 	}
+#else
+	gTxTimerCountdown = gEeprom.TX_TIMEOUT_TIMER * 120;
+#endif
 	gTxTimeoutReached = false;
 	gFlagEndTransmission = false;
 	gRTTECountdown = 0;

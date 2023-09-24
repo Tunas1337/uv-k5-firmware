@@ -16,10 +16,14 @@
 
 #include <string.h>
 #include "app/dtmf.h"
+#if defined(ENABLE_FMRADIO)
 #include "app/fm.h"
+#endif
 #include "bsp/dp32g030/gpio.h"
 #include "dcs.h"
+#if defined(ENABLE_FMRADIO)
 #include "driver/bk1080.h"
+#endif
 #include "driver/bk4819.h"
 #include "driver/gpio.h"
 #include "driver/system.h"
@@ -69,7 +73,6 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 {
 	FUNCTION_Type_t PreviousFunction;
 	bool bWasPowerSave;
-	uint16_t Countdown = 0;
 
 	PreviousFunction = gCurrentFunction;
 	bWasPowerSave = (PreviousFunction == FUNCTION_POWER_SAVE);
@@ -91,13 +94,16 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 		if (PreviousFunction == FUNCTION_TRANSMIT) {
 			gVFO_RSSI_Level[0] = 0;
 			gVFO_RSSI_Level[1] = 0;
-		} else if (PreviousFunction == FUNCTION_RECEIVE) {
-			if (gFmRadioMode) {
-				Countdown = 500;
-			}
-			if (gDTMF_CallState == DTMF_CALL_STATE_CALL_OUT || gDTMF_CallState == DTMF_CALL_STATE_RECEIVED) {
-				gDTMF_AUTO_RESET_TIME = 1 + (gEeprom.DTMF_AUTO_RESET_TIME * 2);
-			}
+		} else if (PreviousFunction != FUNCTION_RECEIVE) {
+			break;
+		}
+#if defined(ENABLE_FMRADIO)
+		if (gFmRadioMode) {
+			gFM_RestoreCountdown = 500;
+		}
+#endif
+		if (gDTMF_CallState == DTMF_CALL_STATE_CALL_OUT || gDTMF_CallState == DTMF_CALL_STATE_RECEIVED) {
+			gDTMF_AUTO_RESET_TIME = 1 + (gEeprom.DTMF_AUTO_RESET_TIME * 2);
 		}
 		return;
 
@@ -118,10 +124,13 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 		return;
 
 	case FUNCTION_TRANSMIT:
+#if defined(ENABLE_FMRADIO)
 		if (gFmRadioMode) {
 			BK1080_Init(0, false);
 		}
+#endif
 
+#if defined(ENABLE_ALARM)
 		if (gAlarmState == ALARM_STATE_TXALARM && gEeprom.ALARM_MODE != ALARM_MODE_TONE) {
 			gAlarmState = ALARM_STATE_ALARM;
 			GUI_DisplayScreen();
@@ -136,6 +145,7 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 			gAlarmToneCounter = 0;
 			break;
 		}
+#endif
 
 		GUI_DisplayScreen();
 		RADIO_SetTxParameters();
@@ -143,18 +153,27 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 
 		DTMF_Reply();
 
+#if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
 		if (gAlarmState != ALARM_STATE_OFF) {
+#if defined(ENABLE_TX1750)
 			if (gAlarmState == ALARM_STATE_TX1750) {
 				BK4819_TransmitTone(true, 1750);
-			} else {
+			}
+#endif
+#if defined(ENABLE_ALARM)
+			if (gAlarmState == ALARM_STATE_TXALARM) {
 				BK4819_TransmitTone(true, 500);
 			}
+#endif
 			SYSTEM_DelayMs(2);
 			GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
+#if defined(ENABLE_ALARM)
 			gAlarmToneCounter = 0;
+#endif
 			gEnableSpeaker = true;
 			break;
 		}
+#endif
 		if (gCurrentVfo->SCRAMBLING_TYPE && gSetting_ScrambleEnable) {
 			BK4819_EnableScramble(gCurrentVfo->SCRAMBLING_TYPE - 1U);
 		} else {
@@ -164,6 +183,8 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 	}
 	gBatterySaveCountdown = 1000;
 	gSchedulePowerSave = false;
-	gFM_RestoreCountdown = Countdown;
+#if defined(ENABLE_FMRADIO)
+	gFM_RestoreCountdown = 0;
+#endif
 }
 

@@ -42,13 +42,20 @@ static const char MenuList[][7] = {
 	"S-ADD1", "S-ADD2",  "STE",    "RP-STE",
 	"MIC",    "1-CALL",  "S-LIST", "SLIST1",
 	// 0x20
-	"SLIST2", "AL-MOD",  "ANI-ID", "UPCODE",
+	"SLIST2",
+#if defined(ENABLE_ALARM)
+	          "AL-MOD",
+#endif
+		             "ANI-ID", "UPCODE",
 	"DWCODE", "D-ST",    "D-RSP",  "D-HOLD",
 	// 0x28
 	"D-PRE",  "PTT-ID",  "D-DCD",  "D-LIST",
 	"PONMSG", "ROGER",   "VOL",    "AM",
 	// 0x30
-	"NOAA_S", "DEL-CH",  "RESET",  "350TX",
+#if defined(ENABLE_NOAA)
+	"NOAA_S",
+#endif
+	          "DEL-CH",  "RESET",  "350TX",
 	"F-LOCK", "200TX",   "500TX",  "350EN",
 	// 0x38
 	"SCREN",
@@ -118,10 +125,12 @@ static const char gSubMenu_MDF[3][5] = {
 	"NAME",
 };
 
+#if defined(ENABLE_ALARM)
 static const char gSubMenu_AL_MOD[2][5] = {
 	"SITE",
 	"TONE",
 };
+#endif
 
 static const char gSubMenu_D_RSP[4][6] = {
 	"NULL",
@@ -288,7 +297,9 @@ void UI_DisplayMenu(void)
 	case MENU_D_ST:
 	case MENU_D_DCD:
 	case MENU_AM:
+#if defined(ENABLE_NOAA)
 	case MENU_NOAA_S:
+#endif
 	case MENU_350TX:
 	case MENU_200TX:
 	case MENU_500TX:
@@ -348,9 +359,11 @@ void UI_DisplayMenu(void)
 		sprintf(String, "LIST%d", gSubMenuSelection);
 		break;
 
+#if defined(ENABLE_ALARM)
 	case MENU_AL_MOD:
 		sprintf(String, gSubMenu_AL_MOD[gSubMenuSelection]);
 		break;
+#endif
 
 	case MENU_ANI_ID:
 		strcpy(String, gEeprom.ANI_DTMF_ID);
@@ -466,16 +479,16 @@ void UI_DisplayMenu(void)
 		}
 
 		if (gSubMenuSelection == 0xFF || !gEeprom.SCAN_LIST_ENABLED[i]) {
-			UI_PrintString(String, 50, 127, 2, 8, 1);
+			UI_PrintString(String, 50, 127, 2, 8, true);
 		} else {
-			UI_PrintString(String, 50, 127, 0, 8, 1);
+			UI_PrintString(String, 50, 127, 0, 8, true);
 			if (IS_MR_CHANNEL(gEeprom.SCANLIST_PRIORITY_CH1[i])) {
 				sprintf(String, "PRI1:%d", gEeprom.SCANLIST_PRIORITY_CH1[i] + 1);
-				UI_PrintString(String, 50, 127, 2, 8, 1);
+				UI_PrintString(String, 50, 127, 2, 8, true);
 			}
 			if (IS_MR_CHANNEL(gEeprom.SCANLIST_PRIORITY_CH2[i])) {
 				sprintf(String, "PRI2:%d", gEeprom.SCANLIST_PRIORITY_CH2[i] + 1);
-				UI_PrintString(String, 50, 127, 4, 8, 1);
+				UI_PrintString(String, 50, 127, 4, 8, true);
 			}
 		}
 	}

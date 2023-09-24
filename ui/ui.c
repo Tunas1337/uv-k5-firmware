@@ -16,11 +16,15 @@
 
 #include <string.h>
 #include "app/dtmf.h"
+#if defined(ENABLE_FMRADIO)
 #include "app/fm.h"
+#endif
 #include "app/scanner.h"
 #include "driver/keyboard.h"
 #include "misc.h"
+#if defined(ENABLE_AIRCOPY)
 #include "ui/aircopy.h"
+#endif
 #include "ui/fmradio.h"
 #include "ui/inputbox.h"
 #include "ui/main.h"
@@ -41,18 +45,22 @@ void GUI_DisplayScreen(void)
 	case DISPLAY_MAIN:
 		UI_DisplayMain();
 		break;
+#if defined(ENABLE_FMRADIO)
 	case DISPLAY_FM:
 		UI_DisplayFM();
 		break;
+#endif
 	case DISPLAY_MENU:
 		UI_DisplayMenu();
 		break;
 	case DISPLAY_SCANNER:
 		UI_DisplayScanner();
 		break;
+#if defined(ENABLE_AIRCOPY)
 	case DISPLAY_AIRCOPY:
 		UI_DisplayAircopy();
 		break;
+#endif
 	default:
 		break;
 	}
@@ -66,7 +74,9 @@ void GUI_SelectNextDisplay(GUI_DisplayType_t Display)
 			gIsInSubMenu = false;
 			gCssScanMode = CSS_SCAN_MODE_OFF;
 			gScanState = SCAN_OFF;
+#if defined(ENABLE_FMRADIO)
 			gFM_ScanState = FM_SCAN_OFF;
+#endif
 			gAskForConfirmation = 0;
 			gDTMF_InputMode = false;
 			gDTMF_InputIndex = 0;
