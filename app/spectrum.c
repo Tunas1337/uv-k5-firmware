@@ -15,6 +15,8 @@
  */
 
 #include "app/spectrum.h"
+#include "bitmaps.h"
+#include "board.h"
 #include "bsp/dp32g030/gpio.h"
 #include "driver/bk4819-regs.h"
 #include "driver/bk4819.h"
@@ -25,6 +27,7 @@
 #include "driver/systick.h"
 #include "external/printf/printf.h"
 #include "font.h"
+#include "helper/battery.h"
 #include "radio.h"
 #include "settings.h"
 #include "ui/helper.h"
@@ -39,11 +42,30 @@ const static uint32_t F_MAX = 130000000;
 bool isInitialized;
 
 bool isListening = true;
+bool monitorMode = false;
 bool redrawStatus = true;
 bool redrawScreen = false;
 bool newScanStart = true;
 bool preventKeypress = true;
+uint16_t statuslineUpdateTimer = 0;
 static char String[32];
+
+const uint8_t U8RssiMap[] = {
+    121, 115, 109, 103, 97, 91, 85, 79, 73, 63,
+};
+
+static uint8_t DBm2S(int dbm) {
+  uint8_t i = 0;
+  dbm *= -1;
+  for (i = 0; i < sizeof(U8RssiMap); i++) {
+    if (dbm >= U8RssiMap[i]) {
+      return i;
+    }
+  }
+  return i;
+}
+
+static int Rssi2DBm(uint8_t rssi) { return (rssi >> 1) - 160; }
 
 enum State {
   SPECTRUM,
@@ -94,36 +116,52 @@ const uint16_t scanStepValues[] = {
     250, 500, 625, 833, 1000, 1250, 2500, 10000,
 };
 
+const uint16_t scanStepBWRegValues[] = {
+    //  RX  RXw TX  BW
+    // 1
+    0b0000000001011000, // 6.25
+    // 10
+    0b0000000001011000, // 6.25
+    // 50
+    0b0000000001011000, // 6.25
+    // 100
+    0b0000000001011000, // 6.25
+    // 250
+    0b0000000001011000, // 6.25
+    // 500
+    0b0010010001011000, // 6.25
+    // 625
+    0b0100100001011000, // 6.25
+    // 833
+    0b0110110001001000, // 6.25
+    // 1000
+    0b0110110001001000, // 6.25
+    // 1250
+    0b0111111100001000, // 6.25
+    // 2500
+    0b0011000000101000, // 25
+    // 10000
+    0b0011000000101000, // 25
+};
+
 enum MenuState {
   MENU_OFF,
-  MENU_PGA,
   MENU_LNA,
-  MENU_LNA_SHORT,
-  MENU_IF,
-  MENU_RF,
-  MENU_RFW,
   MENU_AGC_MANUAL,
   MENU_AGC,
+  MENU_IF,
 } menuState;
 
 char *menuItems[] = {
-    "", "PGA", "LNA", "LNAs", "IF", "RF", "RFWeak", "AGC M", "AGC",
+    "", "LNA", "AGC M", "AGC", "IF",
 };
 
 static uint16_t GetRegMenuValue(enum MenuState st) {
   switch (st) {
-  case MENU_PGA:
-    return BK4819_ReadRegister(0x13) & 0b111;
   case MENU_LNA:
     return (BK4819_ReadRegister(0x13) >> 5) & 0b111;
-  case MENU_LNA_SHORT:
-    return (BK4819_ReadRegister(0x13) >> 8) & 0b11;
   case MENU_IF:
     return BK4819_ReadRegister(0x3D);
-  case MENU_RF:
-    return (BK4819_ReadRegister(0x43) >> 12) & 0b111;
-  case MENU_RFW:
-    return (BK4819_ReadRegister(0x43) >> 9) & 0b111;
   case MENU_AGC_MANUAL:
     return (BK4819_ReadRegister(0x7E) >> 15) & 0b1;
   case MENU_AGC:
@@ -140,34 +178,15 @@ static void SetRegMenuValue(enum MenuState st, bool add) {
   uint8_t offset = 0;
   uint16_t inc = 1;
   switch (st) {
-  case MENU_PGA:
-    regnum = 0x13;
-    vmax = 0b111;
-    break;
   case MENU_LNA:
     regnum = 0x13;
     vmax = 0b111;
     offset = 5;
     break;
-  case MENU_LNA_SHORT:
-    regnum = 0x13;
-    vmax = 0b11;
-    offset = 8;
-    break;
   case MENU_IF:
     regnum = 0x3D;
     vmax = 0xFFFF;
     inc = 0x2aab;
-    break;
-  case MENU_RF:
-    regnum = 0x43;
-    vmax = 0b111;
-    offset = 12;
-    break;
-  case MENU_RFW:
-    regnum = 0x43;
-    vmax = 0b111;
-    offset = 9;
     break;
   case MENU_AGC_MANUAL:
     regnum = 0x7E;
@@ -407,9 +426,7 @@ static void ResetPeak() {
   peak.rssi = 0;
 }
 
-bool IsCenterMode() {
-  return false; /*settings.scanStepIndex < S_STEP_2_5kHz;*/
-}
+bool IsCenterMode() { return settings.scanStepIndex < S_STEP_2_5kHz; }
 uint8_t GetStepsCount() { return 128 >> settings.stepsCount; }
 uint16_t GetScanStep() { return scanStepValues[settings.scanStepIndex]; }
 uint32_t GetBW() { return GetStepsCount() * GetScanStep(); }
@@ -426,15 +443,8 @@ static void DeInitSpectrum() {
   isInitialized = false;
 }
 
-uint8_t GetBWIndex() {
-  uint16_t step = GetScanStep();
-  if (step < 1250) {
-    return BK4819_FILTER_BW_NARROWER;
-  } else if (step < 2500) {
-    return BK4819_FILTER_BW_NARROW;
-  } else {
-    return BK4819_FILTER_BW_WIDE;
-  }
+uint8_t GetBWRegValueForScan() {
+  return scanStepBWRegValues[settings.scanStepIndex];
 }
 
 uint8_t GetRssi() {
@@ -465,7 +475,11 @@ static void ToggleRX(bool on) {
   ToggleAFDAC(on);
   ToggleAFBit(on);
 
-  BK4819_SetFilterBandwidth(on ? settings.listenBw : GetBWIndex());
+  if (on) {
+    BK4819_SetFilterBandwidth(settings.listenBw);
+  } else {
+    BK4819_WriteRegister(0x43, GetBWRegValueForScan());
+  }
 }
 
 // Scan info
@@ -497,7 +511,6 @@ static void RelaunchScan() {
   InitScan();
   ResetPeak();
   ToggleRX(false);
-  settings.frequencyChangeStep = GetBW() >> 1;
   settings.rssiTriggerLevel = 255;
   preventKeypress = true;
   scanInfo.rssiMin = 255;
@@ -536,6 +549,11 @@ static void UpdatePeakInfo() {
 
 static void Measure() { rssiHistory[scanInfo.i] = scanInfo.rssi = GetRssi(); }
 
+static void StartListening() {
+  listenT = 1000;
+  ToggleRX(true);
+}
+
 // Update things by keypress
 
 static void UpdateRssiTriggerLevel(bool inc) {
@@ -566,6 +584,7 @@ static void UpdateScanStep(bool inc) {
   } else {
     return;
   }
+  settings.frequencyChangeStep = GetBW() >> 1;
   RelaunchScan();
   ResetBlacklist();
   redrawStatus = true;
@@ -639,6 +658,7 @@ static void ToggleStepsCount() {
   } else {
     settings.stepsCount--;
   }
+  settings.frequencyChangeStep = GetBW() >> 1;
   RelaunchScan();
   ResetBlacklist();
   redrawStatus = true;
@@ -741,6 +761,46 @@ static void DrawStatus() {
           modulationTypeOptions[settings.modulationType],
           bwOptions[settings.listenBw]);
   GUI_DisplaySmallest(String, 48, 2, true, true);
+  for (int i = 0; i < 4; i++) {
+    BOARD_ADC_GetBatteryInfo(&gBatteryVoltages[i], &gBatteryCurrent);
+  }
+
+  uint16_t Voltage;
+  uint8_t v = 0;
+
+  Voltage = (gBatteryVoltages[0] + gBatteryVoltages[1] + gBatteryVoltages[2] +
+             gBatteryVoltages[3]) /
+            4;
+
+  if (gBatteryCalibration[5] < Voltage) {
+    v = 5;
+  } else if (gBatteryCalibration[4] < Voltage) {
+    v = 5;
+  } else if (gBatteryCalibration[3] < Voltage) {
+    v = 4;
+  } else if (gBatteryCalibration[2] < Voltage) {
+    v = 3;
+  } else if (gBatteryCalibration[1] < Voltage) {
+    v = 2;
+  } else if (gBatteryCalibration[0] < Voltage) {
+    v = 1;
+  }
+
+  // uint16_t voltageAverage = (Voltage * 760) / gBatteryCalibration[3];
+
+  sprintf(String, "%u", v);
+  gStatusLine[127] = 0b01111110;
+  for (int i = 126; i >= 116; i--) {
+    gStatusLine[i] = 0b01000010;
+  }
+  v <<= 1;
+  for (int i = 125; i >= 116; i--) {
+    if (126 - i <= v) {
+      gStatusLine[i + 2] = 0b01111110;
+    }
+  }
+  gStatusLine[117] = 0b01111110;
+  gStatusLine[116] = 0b00011000;
 }
 
 static void DrawF(uint32_t f) {
@@ -768,7 +828,7 @@ static void DrawNums() {
 }
 
 static void DrawRssiTriggerLevel() {
-  if (settings.rssiTriggerLevel == 255)
+  if (settings.rssiTriggerLevel == 255 || monitorMode)
     return;
   uint8_t y = Rssi2Y(settings.rssiTriggerLevel);
   for (uint8_t x = 0; x < 128; x += 2) {
@@ -964,6 +1024,10 @@ void OnKeyDownStill(KEY_Code_t key) {
   case KEY_6:
     ToggleListeningBW();
     break;
+  case KEY_SIDE1:
+    monitorMode = !monitorMode;
+    listenT = 0;
+    break;
   case KEY_SIDE2:
     ToggleBacklight();
     break;
@@ -973,8 +1037,8 @@ void OnKeyDownStill(KEY_Code_t key) {
     BK4819_ToggleGpioOut(BK4819_GPIO1_PIN29_RED, true); */
     break;
   case KEY_MENU:
-    if (menuState == MENU_AGC) {
-      menuState = MENU_OFF;
+    if (menuState == MENU_IF) {
+      menuState = MENU_LNA;
     } else {
       menuState++;
     }
@@ -983,6 +1047,7 @@ void OnKeyDownStill(KEY_Code_t key) {
   case KEY_EXIT:
     if (menuState == MENU_OFF) {
       SetState(SPECTRUM);
+      monitorMode = false;
       RelaunchScan();
       break;
     }
@@ -1015,40 +1080,57 @@ static void RenderSpectrum() {
 static void RenderStill() {
   DrawF(fMeasure);
 
-  for (int i = 0; i < 128; i += 4) {
-    gFrameBuffer[2][i] = 0b11000000;
-  }
+  const uint8_t METER_PAD_LEFT = 3;
 
-  for (int i = 0; i < (peak.rssi >> 1); ++i) {
-    if (i & 3) {
-      gFrameBuffer[2][i] |= 0b00011110;
+  for (int i = 0; i < 121; i++) {
+    if (i % 10 == 0) {
+      gFrameBuffer[2][i + METER_PAD_LEFT] = 0b01110000;
+    } else if (i % 5 == 0) {
+      gFrameBuffer[2][i + METER_PAD_LEFT] = 0b00110000;
+    } else {
+      gFrameBuffer[2][i + METER_PAD_LEFT] = 0b00010000;
     }
   }
 
-  gFrameBuffer[2][settings.rssiTriggerLevel >> 1] = 0b11111111;
+  for (int i = 0; i < (scanInfo.rssi >> 1); ++i) {
+    if (i % 5) {
+      gFrameBuffer[2][i + METER_PAD_LEFT] |= 0b00000111;
+    }
+  }
 
-  const uint8_t padLeft = 4;
-  const uint8_t cellWidth = 28;
-  uint8_t offset = padLeft;
-  uint8_t row = 3;
+  int dbm = Rssi2DBm(scanInfo.rssi);
+  uint8_t s = DBm2S(dbm);
+  sprintf(String, "S: %u", s);
+  GUI_DisplaySmallest(String, 4, 25, false, true);
+  sprintf(String, "%d DBm", dbm);
+  GUI_DisplaySmallest(String, 28, 25, false, true);
 
-  for (int i = 0, idx = 1; idx <= 8; ++i, ++idx) {
+  if (!monitorMode) {
+    gFrameBuffer[2][METER_PAD_LEFT + (settings.rssiTriggerLevel >> 1)] = 0b11111111;
+  }
+
+  const uint8_t PAD_LEFT = 4;
+  const uint8_t CELL_WIDTH = 30;
+  uint8_t offset = PAD_LEFT;
+  uint8_t row = 4;
+
+  for (int i = 0, idx = 1; idx <= 4; ++i, ++idx) {
     if (idx == 5) {
       row += 2;
       i = 0;
     }
-    offset = padLeft + i * cellWidth;
+    offset = PAD_LEFT + i * CELL_WIDTH;
     if (menuState == idx) {
-      for (int j = 0; j < cellWidth; ++j) {
+      for (int j = 0; j < CELL_WIDTH; ++j) {
         gFrameBuffer[row][j + offset] = 0xFF;
         gFrameBuffer[row + 1][j + offset] = 0xFF;
       }
     }
     sprintf(String, "%s", menuItems[idx]);
-    GUI_DisplaySmallest(String, offset + 1, row * 8 + 2, false,
+    GUI_DisplaySmallest(String, offset + 2, row * 8 + 2, false,
                         menuState != idx);
     sprintf(String, "%u", GetRegMenuValue(idx));
-    GUI_DisplaySmallest(String, offset + 1, (row + 1) * 8 + 1, false,
+    GUI_DisplaySmallest(String, offset + 2, (row + 1) * 8 + 1, false,
                         menuState != idx);
   }
 }
@@ -1118,11 +1200,6 @@ static void NextScanStep() {
 
 static bool ScanDone() { return scanInfo.i >= scanInfo.measurementsCount; }
 
-static void StartListening() {
-  listenT = 1000;
-  ToggleRX(true);
-}
-
 static void UpdateScan() {
   Scan();
 
@@ -1150,7 +1227,7 @@ static void UpdateStill() {
   peak.rssi = scanInfo.rssiMax = scanInfo.rssi;
   AutoTriggerLevel();
 
-  if (IsPeakOverLevel()) {
+  if (IsPeakOverLevel() || monitorMode) {
     StartListening();
     return;
   }
@@ -1166,14 +1243,14 @@ static void UpdateListening() {
     return;
   }
 
-  BK4819_SetFilterBandwidth(GetBWIndex());
+  BK4819_WriteRegister(0x43, GetBWRegValueForScan());
   Measure();
   BK4819_SetFilterBandwidth(settings.listenBw);
 
   peak.rssi = scanInfo.rssi;
   redrawScreen = true;
 
-  if (IsPeakOverLevel()) {
+  if (IsPeakOverLevel() || monitorMode) {
     StartListening();
     return;
   }
@@ -1206,9 +1283,10 @@ static void Tick() {
   case FREQ_INPUT:
     break;
   }
-  if (redrawStatus) {
+  if (redrawStatus || ++statuslineUpdateTimer > 4096) {
     RenderStatus();
     redrawStatus = false;
+    statuslineUpdateTimer = 0;
   }
   if (redrawScreen) {
     Render();
