@@ -34,7 +34,7 @@
 #include <stdint.h>
 #include <string.h>
 
-static uint16_t R30, R37, R3D, R43, R47, R48, R4B, R7E;
+static uint16_t R30, R37, R3D, R43, R47, R48, /*R4B,*/ R7E;
 static uint32_t initialFreq;
 const static uint32_t F_MIN = 0;
 const static uint32_t F_MAX = 130000000;
@@ -186,7 +186,7 @@ static void SetRegMenuValue(enum MenuState st, bool add) {
   case MENU_IF:
     regnum = 0x3D;
     vmax = 0xFFFF;
-    inc = 0x2aab;
+    inc = 0x2aaa;
     break;
   case MENU_AGC_MANUAL:
     regnum = 0x7E;
@@ -202,10 +202,10 @@ static void SetRegMenuValue(enum MenuState st, bool add) {
     return;
   }
   uint16_t reg = BK4819_ReadRegister(regnum);
-  if (add && v < vmax) {
+  if (add && v <= vmax - inc) {
     v += inc;
   }
-  if (!add && v > vmin) {
+  if (!add && v >= vmin + inc) {
     v -= inc;
   }
   reg &= ~(vmax << offset);
@@ -347,7 +347,7 @@ static void BackupRegisters() {
   R43 = BK4819_ReadRegister(0x43);
   R47 = BK4819_ReadRegister(0x47);
   R48 = BK4819_ReadRegister(0x48);
-  R4B = BK4819_ReadRegister(0x4B);
+  // R4B = BK4819_ReadRegister(0x4B);
   R7E = BK4819_ReadRegister(0x7E);
 }
 
@@ -358,7 +358,7 @@ static void RestoreRegisters() {
   BK4819_WriteRegister(0x43, R43);
   BK4819_WriteRegister(0x47, R47);
   BK4819_WriteRegister(0x48, R48);
-  BK4819_WriteRegister(0x4B, R4B);
+  // BK4819_WriteRegister(0x4B, R4B);
   BK4819_WriteRegister(0x7E, R7E);
 }
 
@@ -373,7 +373,7 @@ static void SetModulation(ModulationType type) {
     BK4819_WriteRegister(0x3D, 0b0010101101000101);
     BK4819_WriteRegister(BK4819_REG_37, 0x160F);
     BK4819_WriteRegister(0x48, 0b0000001110101000);
-    BK4819_WriteRegister(0x4B, R4B | (1 << 5));
+    // BK4819_WriteRegister(0x4B, R4B | (1 << 5));
     /* } else if (type == MOD_AM) {
       reg = BK4819_ReadRegister(0x7E);
       reg &= ~(0b111);
@@ -449,7 +449,8 @@ uint8_t GetBWRegValueForScan() {
 
 uint8_t GetRssi() {
   ResetRSSI();
-  SYSTICK_DelayUs(settings.scanDelay);
+  SYSTICK_DelayUs(settings.scanDelay
+                  << (settings.scanStepIndex < S_STEP_25_0kHz));
   return clamp(BK4819_GetRSSI(), 0, 255);
 }
 
@@ -730,9 +731,7 @@ static void UpdateFreqInput(KEY_Code_t key) {
 
 static void Blacklist() {
   rssiHistory[peak.i] = 255;
-  newScanStart = true;
-  ResetPeak();
-  ToggleRX(false);
+  RelaunchScan();
 }
 
 // Draw things
@@ -849,22 +848,22 @@ static void DrawTicks() {
   }
 
   // center
-  /* if (IsCenterMode()) {
-      gFrameBuffer[5][62] = 0x80;
-      gFrameBuffer[5][63] = 0x80;
-      gFrameBuffer[5][64] = 0xff;
-      gFrameBuffer[5][65] = 0x80;
-      gFrameBuffer[5][66] = 0x80;
+  if (IsCenterMode()) {
+    gFrameBuffer[5][62] = 0x80;
+    gFrameBuffer[5][63] = 0x80;
+    gFrameBuffer[5][64] = 0xff;
+    gFrameBuffer[5][65] = 0x80;
+    gFrameBuffer[5][66] = 0x80;
   } else {
-      gFrameBuffer[5][0] = 0xff;
-      gFrameBuffer[5][1] = 0x80;
-      gFrameBuffer[5][2] = 0x80;
-      gFrameBuffer[5][3] = 0x80;
-      gFrameBuffer[5][124] = 0x80;
-      gFrameBuffer[5][125] = 0x80;
-      gFrameBuffer[5][126] = 0x80;
-      gFrameBuffer[5][127] = 0xff;
-  } */
+    gFrameBuffer[5][0] = 0xff;
+    gFrameBuffer[5][1] = 0x80;
+    gFrameBuffer[5][2] = 0x80;
+    gFrameBuffer[5][3] = 0x80;
+    gFrameBuffer[5][124] = 0x80;
+    gFrameBuffer[5][125] = 0x80;
+    gFrameBuffer[5][126] = 0x80;
+    gFrameBuffer[5][127] = 0xff;
+  }
 }
 
 static void DrawArrow(uint8_t x) {
@@ -947,6 +946,8 @@ static void OnKeyDown(uint8_t key) {
     }
     DeInitSpectrum();
     break;
+  default:
+    break;
   }
 }
 
@@ -983,6 +984,8 @@ static void OnKeyDownFreqInput(uint8_t key) {
     } else {
       SetF(currentFreq);
     }
+    break;
+  default:
     break;
   }
 }
@@ -1102,11 +1105,12 @@ static void RenderStill() {
   uint8_t s = DBm2S(dbm);
   sprintf(String, "S: %u", s);
   GUI_DisplaySmallest(String, 4, 25, false, true);
-  sprintf(String, "%d DBm", dbm);
+  sprintf(String, "%d dBm", dbm);
   GUI_DisplaySmallest(String, 28, 25, false, true);
 
   if (!monitorMode) {
-    gFrameBuffer[2][METER_PAD_LEFT + (settings.rssiTriggerLevel >> 1)] = 0b11111111;
+    gFrameBuffer[2][METER_PAD_LEFT + (settings.rssiTriggerLevel >> 1)] =
+        0b11111111;
   }
 
   const uint8_t PAD_LEFT = 4;
@@ -1164,10 +1168,10 @@ bool HandleUserInput() {
 
   if (btn == btnPrev && btnCounter < 255) {
     btnCounter++;
-    SYSTEM_DelayMs(90);
+    SYSTEM_DelayMs(20);
   }
 
-  if (btnPrev == 255 || btnCounter > 5) {
+  if (btnCounter == 3 || btnCounter > 26) {
     switch (currentState) {
     case SPECTRUM:
       OnKeyDown(btn);

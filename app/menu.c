@@ -125,12 +125,13 @@ int MENU_GetLimits(uint8_t Cursor, uint8_t *pMin, uint8_t *pMax)
 		*pMax = 9;
 		break;
 	case MENU_STEP:
+        *pMin = 0;
 		if (gTxVfo->Band == BAND2_108MHz) {
-			*pMin = 0;
 			*pMax = 6;
-			break;
-		}
-		// Fallthrough
+		} else {
+			*pMax = 5;
+        }
+        break;
 	case MENU_ABR:
 		*pMin = 0;
 		*pMax = ARRAY_SIZE(gSubMenu_BACK_LIGHT) - 1;
@@ -328,7 +329,11 @@ void MENU_AcceptSetting(void)
 	case MENU_MEM_CH:
 		gTxVfo->CHANNEL_SAVE = gSubMenuSelection;
 		gRequestSaveChannel = 2;
+#ifndef ENABLE_KEEPNAMEONSAVE														   									 
 		gEeprom.MrChannel[0] = gSubMenuSelection;
+#else
+		gEeprom.MrChannel[gEeprom.TX_CHANNEL] = gSubMenuSelection;
+#endif
 		return;
 
 	case MENU_SAVE:
@@ -690,7 +695,11 @@ void MENU_ShowCurrentSetting(void)
 		break;
 
 	case MENU_MEM_CH:
+#ifndef ENABLE_KEEPNAMEONSAVE														   
 		gSubMenuSelection = gEeprom.MrChannel[0];
+#else
+		gSubMenuSelection = gEeprom.MrChannel[gEeprom.TX_CHANNEL];
+#endif		 
 		break;
 
 	case MENU_SAVE:
@@ -834,7 +843,11 @@ void MENU_ShowCurrentSetting(void)
 #endif
 
 	case MENU_DEL_CH:
+#ifndef ENABLE_KEEPNAMEONSAVE															   
 		gSubMenuSelection = RADIO_FindNextChannel(gEeprom.MrChannel[0], 1, false, 1);
+#else
+		gSubMenuSelection = RADIO_FindNextChannel(gEeprom.MrChannel[gEeprom.TX_CHANNEL], 1, false, 1);
+#endif	 
 		break;
 
 	case MENU_350TX:
