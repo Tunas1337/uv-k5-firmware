@@ -1235,32 +1235,32 @@ void APP_TimeSlice500ms(void) {
   }
 #endif
 
-  if (gLowBattery) {
-    gLowBatteryBlink = ++gLowBatteryCountdown & 1;
-    UI_DisplayBattery(gLowBatteryCountdown);
-    if (gCurrentFunction != FUNCTION_TRANSMIT) {
-      if (gLowBatteryCountdown < 30) {
-        if (gLowBatteryCountdown == 29 && !gChargingWithTypeC) {
-          AUDIO_PlayBeep(BEEP_500HZ_60MS_DOUBLE_BEEP);
-        }
-      } else {
-        gLowBatteryCountdown = 0;
-        if (!gChargingWithTypeC) {
-          AUDIO_PlayBeep(BEEP_500HZ_60MS_DOUBLE_BEEP);
-          AUDIO_SetVoiceID(0, VOICE_ID_LOW_VOLTAGE);
-          if (gBatteryDisplayLevel == 0) {
-            AUDIO_PlaySingleVoice(true);
-            gReducedService = true;
-            FUNCTION_Select(FUNCTION_POWER_SAVE);
-            ST7565_Configure_GPIO_B11();
-            GPIO_ClearBit(&GPIOB->DATA, GPIOB_PIN_BACKLIGHT);
-          } else {
-            AUDIO_PlaySingleVoice(false);
-          }
-        }
-      }
-    }
-  }
+	if (gLowBattery) {
+		gLowBatteryBlink = ++gLowBatteryCountdown & 1;
+		UI_DisplayBattery(gLowBatteryCountdown);
+		if (gCurrentFunction != FUNCTION_TRANSMIT) {
+			if (gLowBatteryCountdown < 30) {
+				if (gLowBatteryCountdown == 29 && !gChargingWithTypeC) {
+					AUDIO_PlayBeep(BEEP_500HZ_60MS_DOUBLE_BEEP);
+				}
+			} else {
+				gLowBatteryCountdown = 0;
+				if (!gChargingWithTypeC) {
+					AUDIO_PlayBeep(BEEP_500HZ_60MS_DOUBLE_BEEP);
+					AUDIO_SetVoiceID(0, VOICE_ID_LOW_VOLTAGE);
+					if (gBatteryDisplayLevel == 0) {
+						AUDIO_PlaySingleVoice(true);
+						gReducedService = true;
+						FUNCTION_Select(FUNCTION_POWER_SAVE);
+						ST7565_HardwareReset();
+						GPIO_ClearBit(&GPIOB->DATA, GPIOB_PIN_BACKLIGHT);
+					} else {
+						AUDIO_PlaySingleVoice(false);
+					}
+				}
+			}
+		}
+	}
 
   if (gScreenToDisplay == DISPLAY_SCANNER && gScannerEditState == 0 &&
       gScanCssState < SCAN_CSS_STATE_FOUND) {
