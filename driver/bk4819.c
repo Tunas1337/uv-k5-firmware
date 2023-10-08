@@ -336,7 +336,7 @@ void BK4819_SetupSquelch(uint8_t SquelchOpenRSSIThresh, uint8_t SquelchCloseRSSI
 	BK4819_WriteRegister(BK4819_REG_70, 0);
 	BK4819_WriteRegister(BK4819_REG_4D, 0xA000 | SquelchCloseGlitchThresh);
 	// 0x6f = 0110 1111 meaning the default sql delays from the datasheet are used (101 and 111)
-	BK4819_WriteRegister(BK4819_REG_4E, 0b01000000 | SquelchOpenGlitchThresh);
+	BK4819_WriteRegister(BK4819_REG_4E, 0x6F00 | SquelchOpenGlitchThresh);
 	BK4819_WriteRegister(BK4819_REG_4F, (SquelchCloseNoiseThresh << 8) | SquelchOpenNoiseThresh);
 	BK4819_WriteRegister(BK4819_REG_78, (SquelchOpenRSSIThresh << 8) | SquelchCloseRSSIThresh);
 	BK4819_SetAF(BK4819_AF_MUTE);
@@ -1022,3 +1022,18 @@ void BK4819_PlayDTMFEx(bool bLocalLoopback, char Code)
 	BK4819_ExitTxMute();
 }
 
+void BK4819_ToggleAFBit(bool on) {
+  uint16_t reg = BK4819_ReadRegister(BK4819_REG_47);
+  reg &= ~(1 << 8);
+  if (on)
+    reg |= on << 8;
+  BK4819_WriteRegister(BK4819_REG_47, reg);
+}
+
+void BK4819_ToggleAFDAC(bool on) {
+  uint32_t Reg = BK4819_ReadRegister(BK4819_REG_30);
+  Reg &= ~(1 << 9);
+  if (on)
+    Reg |= (1 << 9);
+  BK4819_WriteRegister(BK4819_REG_30, Reg);
+}

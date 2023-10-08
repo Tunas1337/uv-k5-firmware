@@ -11,6 +11,10 @@ ENABLE_TX1750 := 1
 ENABLE_UART := 1
 ENABLE_NOSCANTIMEOUT := 1
 ENABLE_KEEPNAMEONSAVE := 1
+ENABLE_RSSIBAR := 1
+
+SPECTRUM_AUTOMATIC_SQUELCH := 1
+SPECTRUM_EXTRA_VALUES := 1
 
 BSP_DEFINITIONS := $(wildcard hardware/*/*.def)
 BSP_HEADERS := $(patsubst hardware/%,bsp/%,$(BSP_DEFINITIONS))
@@ -82,6 +86,7 @@ OBJS += frequencies.o
 OBJS += functions.o
 OBJS += helper/battery.o
 OBJS += helper/boot.o
+OBJS += helper/measurements.o
 OBJS += misc.o
 OBJS += radio.o
 OBJS += scheduler.o
@@ -162,6 +167,15 @@ endif
 ifeq ($(ENABLE_KEEPNAMEONSAVE),1)
 CFLAGS += -DENABLE_KEEPNAMEONSAVE
 endif
+ifeq ($(ENABLE_RSSIBAR),1)
+CFLAGS += -DENABLE_RSSIBAR
+endif
+ifeq ($(SPECTRUM_AUTOMATIC_SQUELCH),1)
+CFLAGS += -DSPECTRUM_AUTOMATIC_SQUELCH
+endif
+ifeq ($(SPECTRUM_EXTRA_VALUES),1)
+CFLAGS += -DSPECTRUM_EXTRA_VALUES
+endif
 
 ifeq ($(DEBUG),1)
 ASFLAGS += -g
@@ -180,7 +194,6 @@ DEPS = $(OBJS:.o=.d)
 
 all: $(TARGET)
 	$(OBJCOPY) -O binary $< $<.bin
-	-python fw-pack.py $<.bin $(GIT_HASH) $<.packed.bin
 	-python3 fw-pack.py $<.bin $(GIT_HASH) $<.packed.bin
 	$(SIZE) $<
 

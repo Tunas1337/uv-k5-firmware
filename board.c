@@ -638,12 +638,7 @@ void BOARD_EEPROM_Init(void)
 	}
 
 	// 0EE8..0EEF
-	EEPROM_ReadBuffer(0x0EE8, Data, 8);
-	if (DTMF_ValidateCodes((char *)Data, 8)) {
-		memcpy(gEeprom.KILL_CODE, Data, 8);
-	} else {
-		memcpy(gEeprom.KILL_CODE, "ABCD9\0\0", 8);
-	}
+    // Killcode removed
 
 	// 0EF0..0EF7
 	EEPROM_ReadBuffer(0x0EF0, Data, 8);
@@ -686,10 +681,9 @@ void BOARD_EEPROM_Init(void)
 	gSetting_F_LOCK         = (Data[0] < 6) ? Data[0] : F_LOCK_OFF;
 
 	gSetting_350TX          = (Data[1] < 2) ? Data[1] : true;
-	gSetting_KILLED         = (Data[2] < 2) ? Data[2] : false;
 	gSetting_200TX          = (Data[3] < 2) ? Data[3] : false;
 	gSetting_500TX          = (Data[4] < 2) ? Data[4] : false;
-	gSetting_ALL_TX          = (Data[5] < 2) ? Data[5] : true;
+	gSetting_ALL_TX          = (Data[5] < 2) ? Data[5] : 2;
 	gSetting_ScrambleEnable = (Data[6] < 2) ? Data[6] : true;
 
 	if (!gEeprom.VFO_OPEN) {
