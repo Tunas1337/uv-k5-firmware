@@ -217,8 +217,7 @@ const char gSubMenu_BACK_LIGHT[6][4] =
 		"80s",
 		"ON"
 	};
-
-static const char *defaultEnableDisable[3] = {"DEFAULT", "ENABLE", "DISABLE"};
+  
 static const char *offOn[3] = {"OFF", "ON"};
 
 bool gIsInSubMenu;
@@ -355,10 +354,8 @@ void UI_DisplayMenu(void) {
 	case MENU_AUTOLK:
 	case MENU_S_ADD1:
 	case MENU_S_ADD2:
-	case MENU_STE:
 	case MENU_D_ST:
 	case MENU_D_DCD:
-	case MENU_AM:
 #if defined(ENABLE_NOAA)
   case MENU_NOAA_S:
 #endif
@@ -370,11 +367,7 @@ void UI_DisplayMenu(void) {
   case MENU_AM:
     strcpy(String, offOn[gSubMenuSelection]);
     break;
-	case MENU_350TX:
-	case MENU_200TX:
-	case MENU_500TX:
 	case MENU_ALL_TX:
-	case MENU_SCREN:
 	case MENU_ALLTX:
 		strcpy(String, gSubMenu_OFF_ON[gSubMenuSelection]);
 		break;

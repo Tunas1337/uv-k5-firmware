@@ -578,7 +578,7 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0) {
 	} else {
 		BK4819_DisableVox();
 	}
-	if (gRxVfo->IsAM || (!gRxVfo->DTMF_DECODING_ENABLE && !gSetting_KILLED)) {
+	if (gRxVfo->IsAM || (!gRxVfo->DTMF_DECODING_ENABLE)) {
 		BK4819_DisableDTMF();
 	} else {
 		BK4819_EnableDTMF();
