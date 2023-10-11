@@ -128,10 +128,10 @@ void RADIO_InitInfo(VFO_Info_t *pInfo, uint8_t ChannelSave, uint8_t Band,
 	pInfo->Compander = 0;  // off
   pInfo->FREQUENCY_OF_DEVIATION = 1000000;
 
-  if (ChannelSave == (FREQ_CHANNEL_FIRST + BAND2_108MHz)) {
+  /* if (ChannelSave == (FREQ_CHANNEL_FIRST + BAND2_108MHz)) {
     pInfo->AM_CHANNEL_MODE = true;
     pInfo->IsAM = true;
-  }
+  } */
 
   RADIO_ConfigureSquelchAndOutputPower(pInfo);
 }
@@ -314,6 +314,9 @@ void RADIO_ConfigureChannel(uint8_t VFO, uint32_t Arg) {
   }
 
   Frequency = pRadio->ConfigRX.Frequency;
+
+  Band = FREQUENCY_GetBand(Frequency);
+
   if (Frequency < FrequencyBandTable[Band].lower) {
     pRadio->ConfigRX.Frequency = FrequencyBandTable[Band].lower;
   } else if (Frequency > FrequencyBandTable[Band].upper) {
@@ -403,8 +406,8 @@ void RADIO_ConfigureSquelchAndOutputPower(VFO_Info_t *pInfo) {
   EEPROM_ReadBuffer(0x1ED0 + (Band * 0x10) + (pInfo->OUTPUT_POWER * 3), Txp, 3);
   pInfo->TXP_CalculatedSetting = FREQUENCY_CalculateOutputPower(
       Txp[0], Txp[1], Txp[2], FrequencyBandTable[Band].lower,
-      FrequencyBandTable[Band].middle, FrequencyBandTable[Band].upper,
-      pInfo->pTX->Frequency);
+      (FrequencyBandTable[Band].upper - FrequencyBandTable[Band].lower) / 2,
+      FrequencyBandTable[Band].upper, pInfo->pTX->Frequency);
 }
 
 void RADIO_ApplyOffset(VFO_Info_t *pInfo) {
@@ -726,7 +729,7 @@ void RADIO_PrepareTX(void) {
 #endif
     VfoState_t State;
 
-    if (!FREQUENCY_Check(gCurrentVfo)) {
+    if (FREQUENCY_Check(gCurrentVfo)) {
       if (gCurrentVfo->BUSY_CHANNEL_LOCK &&
           gCurrentFunction == FUNCTION_RECEIVE) {
         State = VFO_STATE_BUSY;

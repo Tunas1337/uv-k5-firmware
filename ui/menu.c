@@ -192,13 +192,8 @@ static const char gSubMenu_RESET[2][4] = {
     "ALL",
 };
 
-static const char gSubMenu_F_LOCK[6][4] = {
-	"OFF",
-	"FCC",
-	"CE",
-	"GB",
-	"430",
-	"438",
+static const char gSubMenu_F_LOCK[5][8] = {
+    "OFF", "FCC", "CE", "GB", "LPD PMR",
 };
 
 const char gSubMenu_Compand[3][6] =

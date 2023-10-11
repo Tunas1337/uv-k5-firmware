@@ -15,6 +15,7 @@
  */
 
 #include "../app/spectrum.h"
+#include <string.h>
 
 #define F_MIN FrequencyBandTable[0].lower
 #define F_MAX FrequencyBandTable[ARRAY_SIZE(FrequencyBandTable) - 1].upper
@@ -73,9 +74,9 @@ static const RegisterSpec registerSpecs[] = {
     {"PGA", 0x13, 0, 0b111, 1},
     {"MIX", 0x13, 3, 0b11, 1},
 
-    {"DEV", 0x40, 0, 4095, 1},
+    {"DEV", 0x40, 0, 0b111111111111, 1},
     {"CMP", 0x31, 3, 1, 1},
-    {"MIC", 0x7D, 0, 0x1F, 1},
+    {"MIC", 0x7D, 0, 0b11111, 1},
 };
 
 static uint16_t registersBackup[128];
@@ -100,33 +101,22 @@ uint16_t batteryUpdateTimer = 0;
 bool isMovingInitialized = false;
 uint8_t lastStepsCount = 0;
 
-uint8_t CountBits(uint16_t n) {
-  uint8_t count = 0;
-  while (n) {
-    count++;
-    n >>= 1;
-  }
-  return count;
-}
-
-static uint16_t GetRegMask(RegisterSpec s) {
-  return (1 << CountBits(s.maxValue)) - 1;
-}
+VfoState_t txAllowState;
 
 static uint16_t GetRegValue(RegisterSpec s) {
-  return (BK4819_ReadRegister(s.num) >> s.offset) & s.maxValue;
+  return (BK4819_ReadRegister(s.num) >> s.offset) & s.mask;
 }
 
 static void SetRegValue(RegisterSpec s, uint16_t v) {
   uint16_t reg = BK4819_ReadRegister(s.num);
-  reg &= ~(GetRegMask(s) << s.offset);
+  reg &= ~(s.mask << s.offset);
   BK4819_WriteRegister(s.num, reg | (v << s.offset));
 }
 
 static void UpdateRegMenuValue(RegisterSpec s, bool add) {
   uint16_t v = GetRegValue(s);
 
-  if (add && v <= s.maxValue - s.inc) {
+  if (add && v <= s.mask - s.inc) {
     v += s.inc;
   } else if (!add && v >= 0 + s.inc) {
     v -= s.inc;
@@ -181,30 +171,29 @@ static void SetModulation(ModulationType type) {
     BK4819_WriteRegister(0x37, 0b0001011000001111);
     BK4819_WriteRegister(0x3D, 0b0010101101000101);
     BK4819_WriteRegister(0x48, 0b0000001110101000);
-  }
-
-  if (type == MOD_AM) {
+  } else if (type == MOD_AM) {
     SetRegValue(afDacGainRegSpec, 0xE);
   }
 }
 
-static void SetF(uint32_t f) {
-  fMeasure = f;
-
-  BK4819_SetFrequency(fMeasure);
-  BK4819_PickRXFilterPathBasedOnFrequency(fMeasure);
+static void ApplyFreqChange() {
   uint16_t reg = BK4819_ReadRegister(BK4819_REG_30);
   BK4819_WriteRegister(BK4819_REG_30, 0);
   BK4819_WriteRegister(BK4819_REG_30, reg);
+}
+
+static void SetF(uint32_t f) {
+  fMeasure = f;
+  BK4819_SetFrequency(f);
+  BK4819_PickRXFilterPathBasedOnFrequency(f);
+  ApplyFreqChange();
 }
 
 static void SetTxF(uint32_t f) {
   fTx = f;
   BK4819_SetFrequency(f);
   BK4819_PickRXFilterPathBasedOnFrequency(f);
-  uint16_t reg = BK4819_ReadRegister(BK4819_REG_30);
-  BK4819_WriteRegister(BK4819_REG_30, 0);
-  BK4819_WriteRegister(BK4819_REG_30, reg);
+  ApplyFreqChange();
 }
 
 // Spectrum related
@@ -331,8 +320,6 @@ uint32_t GetOffsetedF(uint32_t f) {
                FrequencyBandTable[ARRAY_SIZE(FrequencyBandTable) - 1].upper);
 }
 
-bool IsTXAllowed() { return gSetting_ALL_TX != 2; }
-
 static void ToggleAudio(bool on) {
   if (on) {
     GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
@@ -363,7 +350,8 @@ static void ToggleRX(bool on) {
   if (on) {
     listenT = 1000;
     BK4819_WriteRegister(0x43, GetBWRegValueForListen());
-    SetRegValue(afcRegSpec, settings.modulationType != MOD_FM); // disable AFC if not FM
+    SetRegValue(afcRegSpec,
+                settings.modulationType != MOD_FM); // disable AFC if not FM
   } else {
     BK4819_WriteRegister(0x43, GetBWRegValueForScan());
     SetRegValue(afcRegSpec, 1); // disable AFC
@@ -447,12 +435,7 @@ static void InitScan() {
   scanInfo.measurementsCount = GetStepsCount();
 }
 
-static void ResetBlacklist() {
-  for (uint8_t i = 0; i < 128; ++i) {
-    if (blacklist[i])
-      blacklist[i] = false;
-  }
-}
+static void ResetBlacklist() { memset(blacklist, false, 128); }
 
 static void RelaunchScan() {
   InitScan();
@@ -498,7 +481,14 @@ static void UpdatePeakInfo() {
     UpdatePeakInfoForce();
 }
 
-static void Measure() { rssiHistory[scanInfo.i] = scanInfo.rssi = GetRssi(); }
+static void Measure() {
+  // rm harmonics using blacklist for now
+  if (scanInfo.f % 1300000 == 0) {
+    blacklist[scanInfo.i] = true;
+    return;
+  }
+  rssiHistory[scanInfo.i] = scanInfo.rssi = GetRssi();
+}
 
 // Update things by keypress
 
@@ -639,9 +629,7 @@ static void ToggleStepsCount() {
 
 static void ResetFreqInput() {
   tempFreq = 0;
-  for (uint8_t i = 0; i < 10; ++i) {
-    freqInputString[i] = '-';
-  }
+  memset(freqInputString, '-', 10);
 }
 
 static void FreqInput() {
@@ -775,13 +763,16 @@ static void DrawF(uint32_t f) {
   sprintf(String, "%u.%05u", f / 100000, f % 100000);
 
   if (currentState == STILL && kbd.current == KEY_PTT) {
-    if (gBatteryDisplayLevel == 6) {
-      sprintf(String, "VOLTAGE HIGH");
-    } else if (!IsTXAllowed()) {
-      sprintf(String, "DISABLED");
-    } else {
+    switch (txAllowState) {
+    case VFO_STATE_NORMAL:
       f = GetOffsetedF(f);
       sprintf(String, "TX %u.%05u", f / 100000, f % 100000);
+      break;
+    case VFO_STATE_VOL_HIGH:
+      sprintf(String, "VOLTAGE HIGH");
+      break;
+    default:
+      sprintf(String, "DISABLED");
     }
   }
   UI_PrintStringSmall(String, 8, 127, 0);
@@ -1027,8 +1018,13 @@ void OnKeyDownStill(KEY_Code_t key) {
   case KEY_PTT:
     // start transmit
     UpdateBatteryInfo();
-    if (gBatteryDisplayLevel != 6 && IsTXAllowed()) {
+    if (gBatteryDisplayLevel == 6) {
+      txAllowState = VFO_STATE_VOL_HIGH;
+    } else if (IsTXAllowed(GetOffsetedF(fMeasure))) {
+      txAllowState = VFO_STATE_NORMAL;
       ToggleTX(true);
+    } else {
+      txAllowState = VFO_STATE_TX_DISABLE;
     }
     redrawScreen = true;
     break;
@@ -1355,9 +1351,7 @@ void APP_RunSpectrum() {
 
   RelaunchScan();
 
-  for (uint8_t i = 0; i < 128; ++i) {
-    rssiHistory[i] = 0;
-  }
+  memset(rssiHistory, 0, 128);
 
   isInitialized = true;
 

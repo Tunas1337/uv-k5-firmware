@@ -34,17 +34,28 @@ void UI_DisplayRSSIBar(int16_t rssi) {
   char String[16];
 
   const uint8_t LINE = 3;
-  const uint8_t BAR_WIDTH = 92;
-  const uint8_t BAR_LEFT_MARGIN = 34;
+  const uint8_t BAR_LEFT_MARGIN = 24;
 
-  uint8_t length = Rssi2PX(rssi, 0, BAR_WIDTH);
+  int dBm = Rssi2DBm(rssi);
+  uint8_t s = DBm2S(dBm);
+  uint8_t *line = gFrameBuffer[LINE];
 
-  for (int i = BAR_LEFT_MARGIN; i < BAR_LEFT_MARGIN + length; i += 2) {
-    gFrameBuffer[LINE][i] = 0x3e;
+  memset(line, 0, 128);
+
+  for (int i = BAR_LEFT_MARGIN, sv = 1; i < BAR_LEFT_MARGIN + s * 4;
+       i += 4, sv++) {
+    line[i] = line[i + 2] = 0b00111110;
+    line[i + 1] = sv > 9 ? 0b00100010 : 0b00111110;
   }
 
-  sprintf(String, "%d", Rssi2DBm(rssi));
-  UI_PrintStringSmall(String, 0, 0, 3);
+  sprintf(String, "%d", dBm);
+  UI_PrintStringSmallest(String, 110, 25, false, true);
+  if (s < 10) {
+    sprintf(String, "S%u", s);
+  } else {
+    sprintf(String, "S9+%u0", s - 9);
+  }
+  UI_PrintStringSmallest(String, 3, 25, false, true);
 }
 #endif
 
@@ -258,8 +269,8 @@ void UI_DisplayMain(void) {
         UI_DisplayFrequency(gInputBox, 31, i * 4, true, false);
       } else {
         uint32_t frequency = gEeprom.VfoInfo[i].pRX->Frequency;
-        bool noChannelName = gEeprom.VfoInfo[i].Name[0] <= 32 ||
-                             gEeprom.VfoInfo[i].Name[0] >= 127;
+        bool noChannelName = gEeprom.VfoInfo[i].Name[0] == 0 ||
+                             gEeprom.VfoInfo[i].Name[0] == 255;
 
         if (gCurrentFunction == FUNCTION_TRANSMIT) {
           if (gEeprom.CROSS_BAND_RX_TX == CROSS_BAND_OFF) {
@@ -274,7 +285,6 @@ void UI_DisplayMain(void) {
 
         if (!IS_MR_CHANNEL(gEeprom.ScreenChannel[i]) ||
             gEeprom.CHANNEL_DISPLAY_MODE == MDF_FREQUENCY) {
-          // UI_DisplayFrequency(String, 31, i * 4, false, false);
           sprintf(String, "%u.%05u", frequency / 100000, frequency % 100000);
           UI_PrintString(String, 31, 112, i * 4, 8, true);
           if (IS_MR_CHANNEL(gEeprom.ScreenChannel[i])) {
@@ -423,13 +433,10 @@ void UI_DisplayMain(void) {
   }
 
 #if defined(ENABLE_RSSIBAR)
-  int16_t rssi;
-
   if (gCurrentFunction == FUNCTION_RECEIVE ||
       gCurrentFunction == FUNCTION_MONITOR ||
       gCurrentFunction == FUNCTION_INCOMING) {
-    rssi = BK4819_GetRSSI();
-    UI_DisplayRSSIBar(rssi);
+    UI_DisplayRSSIBar(BK4819_GetRSSI());
   }
 #endif
 
