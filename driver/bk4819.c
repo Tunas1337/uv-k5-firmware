@@ -807,12 +807,12 @@ bool BK4819_GetFrequencyScanResult(uint32_t *pFrequency)
 
 	High = BK4819_ReadRegister(BK4819_REG_0D);
 	Finished = (High & 0x8000) == 0;
+	Low = BK4819_ReadRegister(BK4819_REG_0E);
+	*pFrequency = (uint32_t)((High & 0x7FF) << 16) | Low;
 	if (Finished) {
-		Low = BK4819_ReadRegister(BK4819_REG_0E);
-		*pFrequency = (uint32_t)((High & 0x7FF) << 16) | Low;
+		return Finished;
 	}
-
-	return Finished;
+	return false;
 }
 
 BK4819_CssScanResult_t BK4819_GetCxCSSScanResult(uint32_t *pCdcssFreq, uint16_t *pCtcssFreq)

@@ -36,7 +36,7 @@ void UI_DisplayScanner(void)
 	if (gScanSingleFrequency || (gScanCssState != SCAN_CSS_STATE_OFF && gScanCssState != SCAN_CSS_STATE_FAILED)) {
 		sprintf(String, "FREQ:%d.%05d", gScanFrequency / 100000, gScanFrequency % 100000);
 	} else {
-		sprintf(String, "FREQ:**.*****");
+		sprintf(String, "FREQ:%d.%05d", gScanFrequency / 100000, gScanFrequency % 100000);
 	}
 	UI_PrintString(String, 2, 127, 1, 8, false);
 	memset(String, 0, sizeof(String));
@@ -50,7 +50,7 @@ void UI_DisplayScanner(void)
 	}
 	UI_PrintString(String, 2, 127, 3, 8, false);
 	memset(String, 0, sizeof(String));
-
+	
 	if (gScannerEditState == 2) {
 		strcpy(String, "SAVE?");
 		Start = 0;
