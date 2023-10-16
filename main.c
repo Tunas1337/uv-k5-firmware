@@ -100,17 +100,10 @@ void Main(void) {
     BOOT_Mode_t BootMode;
     uint8_t Channel;
 
-<<<<<<< HEAD
-		UI_DisplayWelcome();
-		BACKLIGHT_TurnOn();
-		SYSTEM_DelayMs(500);
-		gMenuListCount = 48;
-=======
     UI_DisplayWelcome();
     BACKLIGHT_TurnOn();
     SYSTEM_DelayMs(1000);
     gMenuListCount = 49;
->>>>>>> fagci/main
 #if defined(ENABLE_ALARM)
     gMenuListCount++;
 #endif
