@@ -27,6 +27,7 @@
 #include "../settings.h"
 #include "../ui/helper.h"
 #include "../ui/inputbox.h"
+#include "../ui/ui.h"
 #include <string.h>
 
 #if defined(ENABLE_RSSIBAR)
@@ -56,6 +57,7 @@ void UI_DisplayRSSIBar(int16_t rssi) {
     sprintf(String, "S9+%u0", s - 9);
   }
   UI_PrintStringSmallest(String, 3, 25, false, true);
+  ST7565_BlitFullScreen();
 }
 #endif
 
@@ -433,10 +435,12 @@ void UI_DisplayMain(void) {
   }
 
 #if defined(ENABLE_RSSIBAR)
-  if (gCurrentFunction == FUNCTION_RECEIVE ||
-      gCurrentFunction == FUNCTION_MONITOR ||
-      gCurrentFunction == FUNCTION_INCOMING) {
-    UI_DisplayRSSIBar(BK4819_GetRSSI());
+  if (gScreenToDisplay == DISPLAY_MAIN) {
+    if (gCurrentFunction == FUNCTION_RECEIVE ||
+        gCurrentFunction == FUNCTION_MONITOR ||
+        gCurrentFunction == FUNCTION_INCOMING) {
+      UI_DisplayRSSIBar(BK4819_GetRSSI());
+    }
   }
 #endif
 
