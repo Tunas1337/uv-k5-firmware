@@ -490,7 +490,7 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 
 	GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
 	gEnableSpeaker = false;
-	BK4819_ToggleGpioOut(BK4819_GPIO0_PIN28_GREEN, false);
+	BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
 
 	if (gRxVfo->CHANNEL_BANDWIDTH == BK4819_FILTER_BW_WIDE) {
 		Bandwidth = gRxVfo->CHANNEL_BANDWIDTH;
@@ -499,9 +499,9 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 	}
 	BK4819_SetFilterBandwidth(Bandwidth);
 
-	BK4819_ToggleGpioOut(BK4819_GPIO1_PIN29_RED, false);
+	BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1_RED, false);
 	BK4819_SetupPowerAmplifier(0, 0);
-	BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1, false);
+	BK4819_ToggleGpioOut(BK4819_GPIO1_PIN29, false);
 
 	while (1) {
 		Status = BK4819_ReadRegister(BK4819_REG_0C);
@@ -528,7 +528,7 @@ void RADIO_SetupRegisters(bool bSwitchToFunction0)
 			gRxVfo->SquelchOpenNoise, gRxVfo->SquelchCloseNoise,
 			gRxVfo->SquelchCloseGlitch, gRxVfo->SquelchOpenGlitch);
 	BK4819_SelectFilter(Frequency);
-	BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2, true);
+	BK4819_ToggleGpioOut(BK4819_GPIO0_PIN28, true);
 	BK4819_WriteRegister(BK4819_REG_48, 0xB3A8);
 
 	InterruptMask = 0
@@ -669,7 +669,7 @@ void RADIO_SetTxParameters(void)
 
 	gEnableSpeaker = false;
 
-	BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2, false);
+	BK4819_ToggleGpioOut(BK4819_GPIO0_PIN28, false);
 	Bandwidth = gCurrentVfo->CHANNEL_BANDWIDTH;
 	if (Bandwidth != BK4819_FILTER_BW_WIDE) {
 		Bandwidth = BK4819_FILTER_BW_NARROW;
@@ -680,7 +680,7 @@ void RADIO_SetTxParameters(void)
 	SYSTEM_DelayMs(10);
 
 	BK4819_SelectFilter(gCurrentVfo->pTX->Frequency);
-	BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1, true);
+	BK4819_ToggleGpioOut(BK4819_GPIO1_PIN29, true);
 	SYSTEM_DelayMs(5);
 
 	BK4819_SetupPowerAmplifier(gCurrentVfo->TXP_CalculatedSetting, gCurrentVfo->pTX->Frequency);
