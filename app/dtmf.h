@@ -41,7 +41,8 @@ enum DTMF_DecodeResponse_t {
 	DTMF_DEC_RESPONSE_NONE = 0,
 	DTMF_DEC_RESPONSE_RING,
 	DTMF_DEC_RESPONSE_REPLY,
-	DTMF_DEC_RESPONSE_BOTH
+	DTMF_DEC_RESPONSE_BOTH,
+	DTMF_DEC_RESPONSE_BEACON
 };
 
 typedef enum DTMF_CallState_t DTMF_CallState_t;
@@ -100,6 +101,7 @@ extern char              gDTMF_Caller[4];
 extern char              gDTMF_Callee[4];
 extern DTMF_State_t      gDTMF_State;
 extern uint8_t           gDTMF_DecodeRingCountdown_500ms;
+extern uint8_t 		  	 gDTMF_BeaconCountdown_500ms; // Countdown for DTMF beacon
 extern uint8_t           gDTMF_chosen_contact;
 extern uint8_t           gDTMF_auto_reset_time_500ms;
 extern DTMF_CallState_t  gDTMF_CallState;
@@ -113,6 +115,7 @@ DTMF_CallMode_t DTMF_CheckGroupCall(const char *pDTMF, const unsigned int size);
 bool DTMF_GetContact(const int Index, char *pContact);
 bool DTMF_FindContact(const char *pContact, char *pResult);
 void DTMF_HandleRequest(void);
+void DTMF_SendBeacon(void);
 
 #endif
 

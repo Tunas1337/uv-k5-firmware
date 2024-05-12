@@ -414,7 +414,7 @@ static void ACTION_AlarmOr1750(const bool b1750)
 		gAlarmState = ALARM_STATE_TX1750;
 	#endif
 
-	(void)b1750;
+	(void)b1750; // huh?
 	gInputBoxIndex = 0;
 
 	gFlagPrepareTX = gAlarmState != ALARM_STATE_OFF;

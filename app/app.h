@@ -22,6 +22,7 @@
 #include "functions.h"
 #include "frequencies.h"
 #include "radio.h"
+#include "dtmf.h"
 
 void     APP_EndTransmission(void);
 void     APP_StartListening(FUNCTION_Type_t function);

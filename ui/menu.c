@@ -240,7 +240,8 @@ const char gSubMenu_D_RSP[][11] =
 	"DO\nNOTHING",
 	"RING",
 	"REPLY",
-	"BOTH"
+	"BOTH",
+	"BEACON"
 };
 #endif
 

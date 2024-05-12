@@ -146,7 +146,7 @@ extern const char* const gSubMenu_MDF[4];
 	extern const char    gSubMenu_AL_MOD[2][5];
 #endif
 #ifdef ENABLE_DTMF_CALLING
-extern const char        gSubMenu_D_RSP[4][11];
+extern const char        gSubMenu_D_RSP[5][11];
 #endif
 extern const char* const gSubMenu_PTT_ID[5];
 extern const char        gSubMenu_PONMSG[4][8];

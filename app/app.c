@@ -1454,7 +1454,28 @@ void APP_TimeSlice500ms(void)
 	BATTERY_TimeSlice500ms();
 	SCANNER_TimeSlice500ms();
 	UI_MAIN_TimeSlice500ms();
-
+	// If beacon countdown is not 0, set alarm state to 1750
+#ifdef ENABLE_ALARM
+	if (gDTMF_BeaconCountdown_500ms > 0) {
+		//AUDIO_PlayBeep(BEEP_880HZ_200MS);
+		if(gAlarmState == ALARM_STATE_OFF)
+			gDTMF_BeaconCountdown_500ms = 0;
+		if (gDTMF_BeaconCountdown_500ms % 2 == 0 && gAlarmState == ALARM_STATE_TX1750) {
+			gFlagPrepareTX = true; 
+			ProcessKey(KEY_PTT, true, true);
+		}
+		else if (gDTMF_BeaconCountdown_500ms % 2 == 1 && gAlarmState == ALARM_STATE_TX1750) {
+			gFlagPrepareTX = false;
+			ProcessKey(KEY_PTT, false, false);
+		}
+		gDTMF_BeaconCountdown_500ms--;
+	}
+	else if (gDTMF_BeaconCountdown_500ms == 0 && gAlarmState == ALARM_STATE_TX1750) {
+		gAlarmState = ALARM_STATE_OFF;
+		gFlagPrepareTX = false;
+		ProcessKey(KEY_PTT, false, false);
+	}
+#endif
 #ifdef ENABLE_DTMF_CALLING
 	if (gCurrentFunction != FUNCTION_TRANSMIT) {
 		if (gDTMF_DecodeRingCountdown_500ms > 0) {
@@ -1465,6 +1486,7 @@ void APP_TimeSlice500ms(void)
 	} else {
 		gDTMF_DecodeRingCountdown_500ms = 0;
 	}
+	
 
 	if (gDTMF_CallState  != DTMF_CALL_STATE_NONE && gCurrentFunction != FUNCTION_TRANSMIT
 		&& gCurrentFunction != FUNCTION_RECEIVE && gDTMF_auto_reset_time_500ms > 0
