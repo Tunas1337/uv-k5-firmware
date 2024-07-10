@@ -1458,9 +1458,21 @@ void APP_TimeSlice500ms(void)
 #ifdef ENABLE_ALARM
 	if (gDTMF_BeaconCountdown_500ms > 0) {
 		//AUDIO_PlayBeep(BEEP_880HZ_200MS);
-		if(gAlarmState == ALARM_STATE_OFF)
+		if (gDTMF_BeaconCountdown_500ms == 15 && gAlarmState == ALARM_STATE_TX1750) {
+			gAlarmState = ALARM_STATE_OFF;
+			gFlagPrepareTX = false;
+			ProcessKey(KEY_PTT, false, false);
+		}
+		else if (gDTMF_BeaconCountdown_500ms < 15)
+		{
+			gFlagPrepareTX = true;
+			ProcessKey(KEY_PTT, true, true);
+		}
+		else if (gAlarmState == ALARM_STATE_OFF)
 			gDTMF_BeaconCountdown_500ms = 0;
-		if (gDTMF_BeaconCountdown_500ms % 2 == 0 && gAlarmState == ALARM_STATE_TX1750) {
+		// If the beacon has been going for 5000ms, turn off the alarm and start
+		// transmitting the microphone
+		else if (gDTMF_BeaconCountdown_500ms % 2 == 0 && gAlarmState == ALARM_STATE_TX1750) {
 			gFlagPrepareTX = true; 
 			ProcessKey(KEY_PTT, true, true);
 		}
@@ -1470,7 +1482,7 @@ void APP_TimeSlice500ms(void)
 		}
 		gDTMF_BeaconCountdown_500ms--;
 	}
-	else if (gDTMF_BeaconCountdown_500ms == 0 && gAlarmState == ALARM_STATE_TX1750) {
+	else if (gDTMF_BeaconCountdown_500ms == 0) {
 		gAlarmState = ALARM_STATE_OFF;
 		gFlagPrepareTX = false;
 		ProcessKey(KEY_PTT, false, false);
